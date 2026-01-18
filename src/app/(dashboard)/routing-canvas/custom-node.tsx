@@ -37,13 +37,7 @@ export function CustomNode({ data, type }: CustomNodeProps) {
   const getIcon = () => {
     if (type === 'integration' && data.integrationType) {
       const IconComponent = integrationIcons[data.integrationType as IntegrationType] || Webhook;
-      return (
-        <IconComponent
-          size={22}
-          className="text-white"
-          style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))' }}
-        />
-      );
+      return <IconComponent size={22} className="text-white drop-shadow-sm" />;
     }
 
     switch (type) {
