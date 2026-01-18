@@ -31,7 +31,7 @@ import { routingApi } from '@/lib/api/ontology';
 import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
 
 // Custom edge data type for routing rules
-interface RoutingEdgeData {
+interface RoutingEdgeData extends Record<string, unknown> {
   ruleId: string;
   priority: number;
   conditions: Record<string, unknown>;
