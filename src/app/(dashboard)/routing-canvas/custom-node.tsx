@@ -54,7 +54,7 @@ export function CustomNode({ data, type }: CustomNodeProps) {
     }
   };
 
-  const getStyles = () => {
+  const getStyles = (): { container: string; style?: React.CSSProperties; iconBg: string } => {
     if (type === 'integration' && data.color) {
       return {
         container: 'border-2 shadow-md',
