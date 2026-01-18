@@ -257,8 +257,15 @@ export interface AIAgentUpdate {
   metadata?: Record<string, unknown>;
 }
 
-export type SourceType = 'ai_agent' | 'department' | 'agent' | 'queue';
-export type DestinationType = 'department' | 'queue' | 'agent';
+// Routing Types
+// client = entry point for conversations (WhatsApp, etc.)
+// ai_agent = AI assistant
+// department = organizational unit
+// queue = waiting queue within department
+// agent = human attendant
+export type SourceType = 'client' | 'ai_agent' | 'department' | 'agent' | 'queue';
+export type DestinationType = 'ai_agent' | 'department' | 'queue' | 'agent';
+export type NodeType = 'client' | 'ai_agent' | 'department' | 'queue' | 'agent';
 
 export interface RoutingRule {
   id: string;
@@ -289,22 +296,40 @@ export interface DelegationOption {
   destination_type: DestinationType;
   destination_id: string;
   destination_name: string;
-  queue_size: number | null;
-  agent_status: string | null;
+  queue_size: number | null;  // Only for queues
+  agent_status: string | null;  // Only for agents
   is_available: boolean;
+}
+
+// Response from /delegation/routing-path
+export interface RoutingPath {
+  current: {
+    type: SourceType;
+    id: string | null;
+  };
+  options: DelegationOption[];
+  can_return_to_ai: boolean;
 }
 
 // React Flow Canvas Types
 export interface CanvasNode {
   id: string;
-  type: 'ai_agent' | 'department' | 'queue' | 'agent';
+  type: NodeType;
   position: { x: number; y: number };
   data: {
     label: string;
     id?: string;
+    // Client node
+    isEntryPoint?: boolean;
+    // AI Agent node
+    isDefault?: boolean;
+    model?: string;
+    // Department node
     agentCount?: number;
     queueCount?: number;
+    // Queue node
     pendingCount?: number;
+    // Agent node
     status?: string;
     isAvailable?: boolean;
     departmentId?: string;

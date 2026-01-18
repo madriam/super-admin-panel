@@ -26,6 +26,7 @@ import {
   Trash2,
   X,
   AlertCircle,
+  User,
 } from 'lucide-react';
 import { routingApi } from '@/lib/api/ontology';
 import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
@@ -44,6 +45,8 @@ type RoutingEdge = Edge<RoutingEdgeData>;
 function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) {
   const getIcon = () => {
     switch (type) {
+      case 'client':
+        return <User className="text-cyan-600" size={24} />;
       case 'ai_agent':
         return <Bot className="text-purple-600" size={24} />;
       case 'department':
@@ -59,6 +62,8 @@ function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) 
 
   const getBgColor = () => {
     switch (type) {
+      case 'client':
+        return 'bg-cyan-50 border-cyan-200';
       case 'ai_agent':
         return 'bg-purple-50 border-purple-200';
       case 'department':
@@ -80,6 +85,12 @@ function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) 
         {getIcon()}
         <div>
           <div className="font-medium text-gray-900 text-sm">{data.label}</div>
+          {type === 'client' && data.isEntryPoint && (
+            <div className="text-xs text-cyan-600 font-medium">Ponto de Entrada</div>
+          )}
+          {type === 'ai_agent' && data.isDefault && (
+            <div className="text-xs text-purple-600 font-medium">Padrão</div>
+          )}
           {type === 'department' && (
             <div className="text-xs text-gray-500">
               {data.agentCount} atend. | {data.queueCount} filas
@@ -110,10 +121,20 @@ function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) 
 
 // Node types for React Flow
 const nodeTypes = {
+  client: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="client" />,
   ai_agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="ai_agent" />,
   department: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="department" />,
   queue: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="queue" />,
   agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="agent" />,
+};
+
+// Valid routing rules (must match backend)
+const VALID_ROUTING_RULES: Record<string, Set<string>> = {
+  client: new Set(['ai_agent', 'department', 'queue']),
+  ai_agent: new Set(['department', 'queue', 'agent']),
+  department: new Set(['department', 'queue', 'agent', 'ai_agent']),
+  queue: new Set(['department', 'agent', 'ai_agent']),
+  agent: new Set(['department', 'queue', 'ai_agent']),
 };
 
 export default function RoutingCanvasPage() {
@@ -176,17 +197,39 @@ export default function RoutingCanvasPage() {
 
       // Parse source and target to get type and ID
       const parseNodeId = (nodeId: string): { type: string; id: string | null } => {
+        // Handle single-word nodes (client, ai_agent legacy)
+        if (nodeId === 'client') return { type: 'client', id: null };
         if (nodeId === 'ai_agent') return { type: 'ai_agent', id: null };
-        const [type, ...idParts] = nodeId.split('_');
-        return { type, id: idParts.join('_') };
+
+        // Handle prefixed nodes (ai_agent_uuid, department_uuid, etc.)
+        const parts = nodeId.split('_');
+        if (parts[0] === 'ai' && parts[1] === 'agent') {
+          // ai_agent_uuid format
+          return { type: 'ai_agent', id: parts.slice(2).join('_') || null };
+        }
+        // department_uuid, queue_uuid, agent_uuid format
+        return { type: parts[0], id: parts.slice(1).join('_') };
       };
 
       const source = parseNodeId(connection.source);
       const target = parseNodeId(connection.target);
 
-      // Validate connection rules
-      if (target.type === 'ai_agent') {
-        setError('Não é possível criar conexão para o AI Agent');
+      // Validate connection using routing rules
+      const validDestinations = VALID_ROUTING_RULES[source.type];
+      if (!validDestinations) {
+        setError(`Tipo de origem inválido: ${source.type}`);
+        return;
+      }
+
+      if (!validDestinations.has(target.type)) {
+        const validList = Array.from(validDestinations).join(', ');
+        setError(`${source.type} não pode conectar a ${target.type}. Destinos válidos: ${validList}`);
+        return;
+      }
+
+      // Client cannot be a destination
+      if (target.type === 'client') {
+        setError('Cliente não pode ser destino de roteamento');
         return;
       }
 
@@ -250,10 +293,39 @@ export default function RoutingCanvasPage() {
     try {
       setSaving(true);
       const positions = nodes.map((n) => {
-        const [type, ...idParts] = n.id.split('_');
+        // Handle special node IDs
+        if (n.id === 'client') {
+          return {
+            node_type: 'client',
+            node_id: undefined,
+            position_x: n.position.x,
+            position_y: n.position.y,
+          };
+        }
+        if (n.id === 'ai_agent') {
+          return {
+            node_type: 'ai_agent',
+            node_id: undefined,
+            position_x: n.position.x,
+            position_y: n.position.y,
+          };
+        }
+
+        // Handle ai_agent_uuid format
+        const parts = n.id.split('_');
+        if (parts[0] === 'ai' && parts[1] === 'agent') {
+          return {
+            node_type: 'ai_agent',
+            node_id: parts.slice(2).join('_'),
+            position_x: n.position.x,
+            position_y: n.position.y,
+          };
+        }
+
+        // Standard format: type_uuid
         return {
-          node_type: n.id === 'ai_agent' ? 'ai_agent' : type,
-          node_id: n.id === 'ai_agent' ? undefined : idParts.join('_'),
+          node_type: parts[0],
+          node_id: parts.slice(1).join('_'),
           position_x: n.position.x,
           position_y: n.position.y,
         };
@@ -356,6 +428,8 @@ export default function RoutingCanvasPage() {
           <MiniMap
             nodeColor={(node) => {
               switch (node.type) {
+                case 'client':
+                  return '#0891b2';
                 case 'ai_agent':
                   return '#9333ea';
                 case 'department':
@@ -375,6 +449,10 @@ export default function RoutingCanvasPage() {
           <Panel position="top-left" className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
             <div className="text-xs font-medium text-gray-700 mb-2">Legenda</div>
             <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                <span>Cliente (Entrada)</span>
+              </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 rounded-full bg-purple-500" />
                 <span>AI Agent</span>
