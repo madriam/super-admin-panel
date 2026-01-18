@@ -138,9 +138,7 @@ export default function SettingsPage() {
                       Autenticacao
                     </p>
                     <p className="text-sm text-gray-500">
-                      {user?.providerData?.[0]?.providerId === 'google.com'
-                        ? 'Conectado via Google'
-                        : 'Conectado via Email'}
+                      Autenticacao desabilitada temporariamente
                     </p>
                   </div>
                 </div>
