@@ -257,15 +257,59 @@ export interface AIAgentUpdate {
   metadata?: Record<string, unknown>;
 }
 
+// Integration Types
+export type IntegrationType = 'whatsapp' | 'instagram' | 'web_chat' | 'messenger' | 'telegram' | 'email' | 'api';
+
+export interface Integration {
+  id: string;
+  tenant_id: string;
+  type: IntegrationType;
+  name: string;
+  description: string | null;
+  config: Record<string, unknown>;
+  icon: string | null;
+  color: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IntegrationCreate {
+  type: IntegrationType;
+  name: string;
+  description?: string | null;
+  config?: Record<string, unknown>;
+  icon?: string | null;
+  color?: string | null;
+  is_active?: boolean;
+}
+
+export interface IntegrationUpdate {
+  name?: string;
+  description?: string | null;
+  config?: Record<string, unknown>;
+  icon?: string | null;
+  color?: string | null;
+  is_active?: boolean;
+}
+
+export interface IntegrationRoutingImpact {
+  integration_id: string;
+  integration_name: string;
+  affected_routing_rules: number;
+  routing_rule_ids: string[];
+}
+
 // Routing Types
-// client = entry point for conversations (WhatsApp, etc.)
+// integration = entry point for conversations (WhatsApp, Instagram, etc.)
 // ai_agent = AI assistant
 // department = organizational unit
 // queue = waiting queue within department
 // agent = human attendant
-export type SourceType = 'client' | 'ai_agent' | 'department' | 'agent' | 'queue';
+export type SourceType = 'integration' | 'ai_agent' | 'department' | 'agent' | 'queue';
 export type DestinationType = 'ai_agent' | 'department' | 'queue' | 'agent';
-export type NodeType = 'client' | 'ai_agent' | 'department' | 'queue' | 'agent';
+export type NodeType = 'integration' | 'ai_agent' | 'department' | 'queue' | 'agent';
 
 export interface RoutingRule {
   id: string;
@@ -319,8 +363,12 @@ export interface CanvasNode {
   data: {
     label: string;
     id?: string;
-    // Client node
+    // Integration node
     isEntryPoint?: boolean;
+    integrationType?: IntegrationType;
+    icon?: string;
+    color?: string;
+    isVerified?: boolean;
     // AI Agent node
     isDefault?: boolean;
     model?: string;
@@ -340,6 +388,8 @@ export interface CanvasEdge {
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
   data: {
     ruleId: string;
     priority: number;

@@ -17,6 +17,10 @@ import type {
   Queue,
   QueueCreate,
   QueueUpdate,
+  Integration,
+  IntegrationCreate,
+  IntegrationUpdate,
+  IntegrationRoutingImpact,
   RoutingRule,
   RoutingRuleCreate,
   CanvasData,
@@ -251,6 +255,42 @@ export const aiAgentsApi = {
   delete: (id: string) =>
     fetchApi<void>(`/ai-agents/${id}`, {
       method: 'DELETE',
+    }),
+};
+
+// ========== Integrations ==========
+
+export const integrationsApi = {
+  list: (params?: { type?: string; is_active?: boolean }) =>
+    fetchApi<Integration[]>(
+      `/integrations${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+    ),
+
+  get: (id: string) => fetchApi<Integration>(`/integrations/${id}`),
+
+  create: (data: IntegrationCreate) =>
+    fetchApi<Integration>('/integrations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: IntegrationUpdate) =>
+    fetchApi<Integration>(`/integrations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchApi<void>(`/integrations/${id}`, {
+      method: 'DELETE',
+    }),
+
+  getRoutingImpact: (id: string) =>
+    fetchApi<IntegrationRoutingImpact>(`/integrations/${id}/routing-impact`),
+
+  disable: (id: string, confirm: boolean = false) =>
+    fetchApi<Integration>(`/integrations/${id}/disable?confirm=${confirm}`, {
+      method: 'POST',
     }),
 };
 

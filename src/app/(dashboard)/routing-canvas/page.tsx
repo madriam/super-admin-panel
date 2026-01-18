@@ -14,9 +14,11 @@ import {
   Node,
   BackgroundVariant,
   Panel,
+  ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
+  MessageCircle,
   Bot,
   Network,
   Layers,
@@ -26,10 +28,12 @@ import {
   Trash2,
   X,
   AlertCircle,
-  User,
+  Plus,
 } from 'lucide-react';
+import Link from 'next/link';
 import { routingApi } from '@/lib/api/ontology';
 import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
+import { nodeTypes } from './custom-node';
 
 // Custom edge data type for routing rules
 interface RoutingEdgeData extends Record<string, unknown> {
@@ -41,96 +45,9 @@ interface RoutingEdgeData extends Record<string, unknown> {
 // Custom edge type with our data
 type RoutingEdge = Edge<RoutingEdgeData>;
 
-// Custom node component
-function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) {
-  const getIcon = () => {
-    switch (type) {
-      case 'client':
-        return <User className="text-cyan-600" size={24} />;
-      case 'ai_agent':
-        return <Bot className="text-purple-600" size={24} />;
-      case 'department':
-        return <Network className="text-blue-600" size={24} />;
-      case 'queue':
-        return <Layers className="text-green-600" size={24} />;
-      case 'agent':
-        return <Headphones className="text-orange-600" size={24} />;
-      default:
-        return null;
-    }
-  };
-
-  const getBgColor = () => {
-    switch (type) {
-      case 'client':
-        return 'bg-cyan-50 border-cyan-200';
-      case 'ai_agent':
-        return 'bg-purple-50 border-purple-200';
-      case 'department':
-        return 'bg-blue-50 border-blue-200';
-      case 'queue':
-        return 'bg-green-50 border-green-200';
-      case 'agent':
-        return data.isAvailable ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-300';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  return (
-    <div
-      className={`px-4 py-3 rounded-lg border-2 shadow-sm min-w-[150px] ${getBgColor()}`}
-    >
-      <div className="flex items-center gap-2">
-        {getIcon()}
-        <div>
-          <div className="font-medium text-gray-900 text-sm">{data.label}</div>
-          {type === 'client' && data.isEntryPoint && (
-            <div className="text-xs text-cyan-600 font-medium">Ponto de Entrada</div>
-          )}
-          {type === 'ai_agent' && data.isDefault && (
-            <div className="text-xs text-purple-600 font-medium">Padrão</div>
-          )}
-          {type === 'department' && (
-            <div className="text-xs text-gray-500">
-              {data.agentCount} atend. | {data.queueCount} filas
-            </div>
-          )}
-          {type === 'queue' && data.pendingCount !== undefined && (
-            <div className="text-xs text-gray-500">{data.pendingCount} na fila</div>
-          )}
-          {type === 'agent' && (
-            <div className="flex items-center gap-1 text-xs">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  data.status === 'online'
-                    ? 'bg-green-500'
-                    : data.status === 'busy'
-                    ? 'bg-yellow-500'
-                    : 'bg-gray-400'
-                }`}
-              />
-              <span className="text-gray-500 capitalize">{data.status}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Node types for React Flow
-const nodeTypes = {
-  client: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="client" />,
-  ai_agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="ai_agent" />,
-  department: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="department" />,
-  queue: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="queue" />,
-  agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="agent" />,
-};
-
 // Valid routing rules (must match backend)
 const VALID_ROUTING_RULES: Record<string, Set<string>> = {
-  client: new Set(['ai_agent', 'department', 'queue']),
+  integration: new Set(['ai_agent', 'department', 'queue']),
   ai_agent: new Set(['department', 'queue', 'agent']),
   department: new Set(['department', 'queue', 'agent', 'ai_agent']),
   queue: new Set(['department', 'agent', 'ai_agent']),
@@ -162,12 +79,15 @@ export default function RoutingCanvasPage() {
         draggable: true,
       }));
 
-      // Convert API edges to React Flow edges
+      // Convert API edges to React Flow edges with smooth styling
       const flowEdges: RoutingEdge[] = data.edges.map((e: CanvasEdge) => ({
         id: e.id,
         source: e.source,
         target: e.target,
+        sourceHandle: e.sourceHandle || 'right',
+        targetHandle: e.targetHandle || 'left',
         data: e.data,
+        type: 'smoothstep',
         animated: true,
         style: { stroke: '#6366f1', strokeWidth: 2 },
         markerEnd: {
@@ -197,16 +117,22 @@ export default function RoutingCanvasPage() {
 
       // Parse source and target to get type and ID
       const parseNodeId = (nodeId: string): { type: string; id: string | null } => {
-        // Handle single-word nodes (client, ai_agent legacy)
-        if (nodeId === 'client') return { type: 'client', id: null };
+        // Handle single-word nodes (ai_agent legacy)
         if (nodeId === 'ai_agent') return { type: 'ai_agent', id: null };
 
-        // Handle prefixed nodes (ai_agent_uuid, department_uuid, etc.)
+        // Handle prefixed nodes (integration_uuid, ai_agent_uuid, department_uuid, etc.)
         const parts = nodeId.split('_');
+
+        // integration_uuid format
+        if (parts[0] === 'integration') {
+          return { type: 'integration', id: parts.slice(1).join('_') };
+        }
+
+        // ai_agent_uuid format
         if (parts[0] === 'ai' && parts[1] === 'agent') {
-          // ai_agent_uuid format
           return { type: 'ai_agent', id: parts.slice(2).join('_') || null };
         }
+
         // department_uuid, queue_uuid, agent_uuid format
         return { type: parts[0], id: parts.slice(1).join('_') };
       };
@@ -227,9 +153,9 @@ export default function RoutingCanvasPage() {
         return;
       }
 
-      // Client cannot be a destination
-      if (target.type === 'client') {
-        setError('Cliente não pode ser destino de roteamento');
+      // Integration cannot be a destination
+      if (target.type === 'integration') {
+        setError('Integração é apenas ponto de entrada, não pode ser destino');
         return;
       }
 
@@ -251,7 +177,10 @@ export default function RoutingCanvasPage() {
           id: `edge_${createdRule.id}`,
           source: connection.source,
           target: connection.target,
+          sourceHandle: 'right',
+          targetHandle: 'left',
           data: { ruleId: createdRule.id, priority: 0, conditions: {} },
+          type: 'smoothstep',
           animated: true,
           style: { stroke: '#6366f1', strokeWidth: 2 },
           markerEnd: {
@@ -293,15 +222,7 @@ export default function RoutingCanvasPage() {
     try {
       setSaving(true);
       const positions = nodes.map((n) => {
-        // Handle special node IDs
-        if (n.id === 'client') {
-          return {
-            node_type: 'client',
-            node_id: undefined,
-            position_x: n.position.x,
-            position_y: n.position.y,
-          };
-        }
+        // Handle ai_agent legacy
         if (n.id === 'ai_agent') {
           return {
             node_type: 'ai_agent',
@@ -311,8 +232,20 @@ export default function RoutingCanvasPage() {
           };
         }
 
-        // Handle ai_agent_uuid format
+        // Handle prefixed formats
         const parts = n.id.split('_');
+
+        // integration_uuid format
+        if (parts[0] === 'integration') {
+          return {
+            node_type: 'integration',
+            node_id: parts.slice(1).join('_'),
+            position_x: n.position.x,
+            position_y: n.position.y,
+          };
+        }
+
+        // ai_agent_uuid format
         if (parts[0] === 'ai' && parts[1] === 'agent') {
           return {
             node_type: 'ai_agent',
@@ -351,6 +284,9 @@ export default function RoutingCanvasPage() {
     [onNodesChange]
   );
 
+  // Check if there are no integrations
+  const hasIntegrations = nodes.some((n) => n.type === 'integration');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
@@ -370,6 +306,13 @@ export default function RoutingCanvasPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/integrations"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Plus size={18} />
+            Integração
+          </Link>
           <button
             onClick={loadCanvasData}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -391,6 +334,25 @@ export default function RoutingCanvasPage() {
           </button>
         </div>
       </div>
+
+      {/* No integrations warning */}
+      {!hasIntegrations && (
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} />
+            <span>
+              Nenhuma integração configurada. Adicione uma integração (WhatsApp, Instagram, etc.) para
+              começar a receber conversas.
+            </span>
+          </div>
+          <Link
+            href="/integrations"
+            className="px-3 py-1 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+          >
+            Adicionar Integração
+          </Link>
+        </div>
+      )}
 
       {/* Error Alert */}
       {error && (
@@ -415,11 +377,13 @@ export default function RoutingCanvasPage() {
           onConnect={onConnect}
           onEdgeClick={onEdgeClick}
           nodeTypes={nodeTypes}
+          connectionMode={ConnectionMode.Loose}
           fitView
           snapToGrid
           snapGrid={[15, 15]}
           connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
           defaultEdgeOptions={{
+            type: 'smoothstep',
             animated: true,
             style: { stroke: '#6366f1', strokeWidth: 2 },
           }}
@@ -428,8 +392,8 @@ export default function RoutingCanvasPage() {
           <MiniMap
             nodeColor={(node) => {
               switch (node.type) {
-                case 'client':
-                  return '#0891b2';
+                case 'integration':
+                  return (node.data as CanvasNode['data']).color || '#0891b2';
                 case 'ai_agent':
                   return '#9333ea';
                 case 'department':
@@ -450,23 +414,23 @@ export default function RoutingCanvasPage() {
             <div className="text-xs font-medium text-gray-700 mb-2">Legenda</div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                <span>Cliente (Entrada)</span>
+                <MessageCircle size={14} className="text-green-500" />
+                <span>Integração (Entrada)</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <Bot size={14} className="text-purple-500" />
                 <span>AI Agent</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <Network size={14} className="text-blue-500" />
                 <span>Departamento</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <Layers size={14} className="text-green-500" />
                 <span>Fila</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                <Headphones size={14} className="text-orange-500" />
                 <span>Atendente</span>
               </div>
             </div>
@@ -478,7 +442,7 @@ export default function RoutingCanvasPage() {
               <p className="font-medium text-gray-700 mb-1">Como usar:</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li>Arraste os nós para organizar</li>
-                <li>Conecte arrastando de um nó para outro</li>
+                <li>Conecte arrastando do ponto direito para o esquerdo</li>
                 <li>Clique em uma conexão para selecioná-la</li>
                 <li>Salve as posições após organizar</li>
               </ul>
@@ -489,7 +453,7 @@ export default function RoutingCanvasPage() {
 
       {/* Selected Edge Panel */}
       {selectedEdge && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-lg border border-gray-200 shadow-lg p-4 flex items-center gap-4">
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-lg border border-gray-200 shadow-lg p-4 flex items-center gap-4 z-50">
           <div>
             <div className="text-sm font-medium text-gray-700">Conexão selecionada</div>
             <div className="text-xs text-gray-500">

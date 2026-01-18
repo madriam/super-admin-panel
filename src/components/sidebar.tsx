@@ -17,6 +17,7 @@ import {
   Headphones,
   Bot,
   Layers,
+  Plug,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -52,6 +53,7 @@ const navigationSections: NavSection[] = [
   {
     title: 'Roteamento',
     items: [
+      { name: 'Integrações', href: '/integrations', icon: Plug },
       { name: 'Canvas de Conexões', href: '/routing-canvas', icon: GitBranch },
     ],
   },
