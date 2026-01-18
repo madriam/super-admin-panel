@@ -30,6 +30,16 @@ import {
 import { routingApi } from '@/lib/api/ontology';
 import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
 
+// Custom edge data type for routing rules
+interface RoutingEdgeData {
+  ruleId: string;
+  priority: number;
+  conditions: Record<string, unknown>;
+}
+
+// Custom edge type with our data
+type RoutingEdge = Edge<RoutingEdgeData>;
+
 // Custom node component
 function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) {
   const getIcon = () => {
@@ -108,11 +118,11 @@ const nodeTypes = {
 
 export default function RoutingCanvasPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<RoutingEdge>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<RoutingEdge | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Load canvas data from API
@@ -132,7 +142,7 @@ export default function RoutingCanvasPage() {
       }));
 
       // Convert API edges to React Flow edges
-      const flowEdges: Edge[] = data.edges.map((e: CanvasEdge) => ({
+      const flowEdges: RoutingEdge[] = data.edges.map((e: CanvasEdge) => ({
         id: e.id,
         source: e.source,
         target: e.target,
@@ -194,7 +204,7 @@ export default function RoutingCanvasPage() {
         const createdRule = await routingApi.create(rule);
 
         // Add edge to canvas
-        const newEdge: Edge = {
+        const newEdge: RoutingEdge = {
           id: `edge_${createdRule.id}`,
           source: connection.source,
           target: connection.target,
@@ -217,7 +227,7 @@ export default function RoutingCanvasPage() {
   );
 
   // Handle edge click (select for deletion)
-  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: RoutingEdge) => {
     setSelectedEdge(edge);
   }, []);
 
