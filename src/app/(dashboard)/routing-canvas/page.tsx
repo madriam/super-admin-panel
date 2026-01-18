@@ -1,0 +1,428 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ReactFlow,
+  Controls,
+  MiniMap,
+  Background,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+  BackgroundVariant,
+  Panel,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import {
+  Bot,
+  Network,
+  Layers,
+  Headphones,
+  Save,
+  RefreshCw,
+  Trash2,
+  X,
+  AlertCircle,
+} from 'lucide-react';
+import { routingApi } from '@/lib/api/ontology';
+import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
+
+// Custom node component
+function CustomNode({ data, type }: { data: CanvasNode['data']; type: string }) {
+  const getIcon = () => {
+    switch (type) {
+      case 'ai_agent':
+        return <Bot className="text-purple-600" size={24} />;
+      case 'department':
+        return <Network className="text-blue-600" size={24} />;
+      case 'queue':
+        return <Layers className="text-green-600" size={24} />;
+      case 'agent':
+        return <Headphones className="text-orange-600" size={24} />;
+      default:
+        return null;
+    }
+  };
+
+  const getBgColor = () => {
+    switch (type) {
+      case 'ai_agent':
+        return 'bg-purple-50 border-purple-200';
+      case 'department':
+        return 'bg-blue-50 border-blue-200';
+      case 'queue':
+        return 'bg-green-50 border-green-200';
+      case 'agent':
+        return data.isAvailable ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-300';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
+
+  return (
+    <div
+      className={`px-4 py-3 rounded-lg border-2 shadow-sm min-w-[150px] ${getBgColor()}`}
+    >
+      <div className="flex items-center gap-2">
+        {getIcon()}
+        <div>
+          <div className="font-medium text-gray-900 text-sm">{data.label}</div>
+          {type === 'department' && (
+            <div className="text-xs text-gray-500">
+              {data.agentCount} atend. | {data.queueCount} filas
+            </div>
+          )}
+          {type === 'queue' && data.pendingCount !== undefined && (
+            <div className="text-xs text-gray-500">{data.pendingCount} na fila</div>
+          )}
+          {type === 'agent' && (
+            <div className="flex items-center gap-1 text-xs">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  data.status === 'online'
+                    ? 'bg-green-500'
+                    : data.status === 'busy'
+                    ? 'bg-yellow-500'
+                    : 'bg-gray-400'
+                }`}
+              />
+              <span className="text-gray-500 capitalize">{data.status}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Node types for React Flow
+const nodeTypes = {
+  ai_agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="ai_agent" />,
+  department: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="department" />,
+  queue: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="queue" />,
+  agent: (props: { data: CanvasNode['data'] }) => <CustomNode data={props.data} type="agent" />,
+};
+
+export default function RoutingCanvasPage() {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Load canvas data from API
+  const loadCanvasData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await routingApi.getCanvasData();
+
+      // Convert API nodes to React Flow nodes
+      const flowNodes: Node[] = data.nodes.map((n: CanvasNode) => ({
+        id: n.id,
+        type: n.type,
+        position: n.position,
+        data: n.data,
+        draggable: true,
+      }));
+
+      // Convert API edges to React Flow edges
+      const flowEdges: Edge[] = data.edges.map((e: CanvasEdge) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        data: e.data,
+        animated: true,
+        style: { stroke: '#6366f1', strokeWidth: 2 },
+        markerEnd: {
+          type: 'arrowclosed' as const,
+          color: '#6366f1',
+        },
+      }));
+
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+      setHasChanges(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados do canvas');
+    } finally {
+      setLoading(false);
+    }
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    loadCanvasData();
+  }, [loadCanvasData]);
+
+  // Handle new connection (create routing rule)
+  const onConnect = useCallback(
+    async (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+
+      // Parse source and target to get type and ID
+      const parseNodeId = (nodeId: string): { type: string; id: string | null } => {
+        if (nodeId === 'ai_agent') return { type: 'ai_agent', id: null };
+        const [type, ...idParts] = nodeId.split('_');
+        return { type, id: idParts.join('_') };
+      };
+
+      const source = parseNodeId(connection.source);
+      const target = parseNodeId(connection.target);
+
+      // Validate connection rules
+      if (target.type === 'ai_agent') {
+        setError('Não é possível criar conexão para o AI Agent');
+        return;
+      }
+
+      try {
+        // Create routing rule
+        const rule: RoutingRuleCreate = {
+          source_type: source.type as SourceType,
+          source_id: source.id,
+          destination_type: target.type as DestinationType,
+          destination_id: target.id!,
+          priority: 0,
+          is_active: true,
+        };
+
+        const createdRule = await routingApi.create(rule);
+
+        // Add edge to canvas
+        const newEdge: Edge = {
+          id: `edge_${createdRule.id}`,
+          source: connection.source,
+          target: connection.target,
+          data: { ruleId: createdRule.id, priority: 0, conditions: {} },
+          animated: true,
+          style: { stroke: '#6366f1', strokeWidth: 2 },
+          markerEnd: {
+            type: 'arrowclosed' as const,
+            color: '#6366f1',
+          },
+        };
+
+        setEdges((eds) => addEdge(newEdge, eds));
+        setHasChanges(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao criar conexão');
+      }
+    },
+    [setEdges]
+  );
+
+  // Handle edge click (select for deletion)
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setSelectedEdge(edge);
+  }, []);
+
+  // Delete selected edge
+  const deleteSelectedEdge = async () => {
+    if (!selectedEdge?.data?.ruleId) return;
+
+    try {
+      await routingApi.delete(selectedEdge.data.ruleId);
+      setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
+      setSelectedEdge(null);
+      setHasChanges(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao deletar conexão');
+    }
+  };
+
+  // Save node positions
+  const savePositions = async () => {
+    try {
+      setSaving(true);
+      const positions = nodes.map((n) => {
+        const [type, ...idParts] = n.id.split('_');
+        return {
+          node_type: n.id === 'ai_agent' ? 'ai_agent' : type,
+          node_id: n.id === 'ai_agent' ? undefined : idParts.join('_'),
+          position_x: n.position.x,
+          position_y: n.position.y,
+        };
+      });
+
+      await routingApi.savePositions(positions);
+      setHasChanges(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar posições');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Track position changes
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      onNodesChange(changes);
+      if (changes.some((c) => c.type === 'position' && 'position' in c)) {
+        setHasChanges(true);
+      }
+    },
+    [onNodesChange]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[calc(100vh-140px)] flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Canvas de Roteamento</h1>
+          <p className="text-gray-600 mt-1">
+            Arraste conexões entre nós para definir regras de delegação
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={loadCanvasData}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw size={18} />
+            Recarregar
+          </button>
+          <button
+            onClick={savePositions}
+            disabled={saving || !hasChanges}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+            ) : (
+              <Save size={18} />
+            )}
+            {saving ? 'Salvando...' : hasChanges ? 'Salvar Posições' : 'Salvo'}
+          </button>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} />
+            {error}
+          </div>
+          <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* Canvas */}
+      <div className="flex-1 bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          snapToGrid
+          snapGrid={[15, 15]}
+          connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
+          defaultEdgeOptions={{
+            animated: true,
+            style: { stroke: '#6366f1', strokeWidth: 2 },
+          }}
+        >
+          <Controls />
+          <MiniMap
+            nodeColor={(node) => {
+              switch (node.type) {
+                case 'ai_agent':
+                  return '#9333ea';
+                case 'department':
+                  return '#2563eb';
+                case 'queue':
+                  return '#16a34a';
+                case 'agent':
+                  return '#ea580c';
+                default:
+                  return '#6b7280';
+              }
+            }}
+          />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+
+          {/* Legend Panel */}
+          <Panel position="top-left" className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="text-xs font-medium text-gray-700 mb-2">Legenda</div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <span>AI Agent</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>Departamento</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span>Fila</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                <span>Atendente</span>
+              </div>
+            </div>
+          </Panel>
+
+          {/* Instructions Panel */}
+          <Panel position="bottom-left" className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm max-w-xs">
+            <div className="text-xs text-gray-600">
+              <p className="font-medium text-gray-700 mb-1">Como usar:</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Arraste os nós para organizar</li>
+                <li>Conecte arrastando de um nó para outro</li>
+                <li>Clique em uma conexão para selecioná-la</li>
+                <li>Salve as posições após organizar</li>
+              </ul>
+            </div>
+          </Panel>
+        </ReactFlow>
+      </div>
+
+      {/* Selected Edge Panel */}
+      {selectedEdge && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-lg border border-gray-200 shadow-lg p-4 flex items-center gap-4">
+          <div>
+            <div className="text-sm font-medium text-gray-700">Conexão selecionada</div>
+            <div className="text-xs text-gray-500">
+              {selectedEdge.source} → {selectedEdge.target}
+            </div>
+          </div>
+          <button
+            onClick={deleteSelectedEdge}
+            className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+          >
+            <Trash2 size={16} />
+            Deletar
+          </button>
+          <button
+            onClick={() => setSelectedEdge(null)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

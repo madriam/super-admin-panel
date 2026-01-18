@@ -12,15 +12,54 @@ import {
   LogOut,
   Menu,
   X,
+  Network,
+  GitBranch,
+  Headphones,
+  Bot,
+  Layers,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Organizações', href: '/organizations', icon: Building2 },
-  { name: 'Conversas', href: '/conversations', icon: MessageSquare },
-  { name: 'Usuários', href: '/users', icon: Users },
-  { name: 'Configurações', href: '/settings', icon: Settings },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number }>;
+}
+
+interface NavSection {
+  title?: string;
+  items: NavItem[];
+}
+
+const navigationSections: NavSection[] = [
+  {
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Organizações', href: '/organizations', icon: Building2 },
+      { name: 'Conversas', href: '/conversations', icon: MessageSquare },
+      { name: 'Usuários', href: '/users', icon: Users },
+    ],
+  },
+  {
+    title: 'Estrutura Organizacional',
+    items: [
+      { name: 'Departamentos', href: '/departments', icon: Network },
+      { name: 'Atendentes', href: '/agents', icon: Headphones },
+      { name: 'Filas', href: '/queues', icon: Layers },
+      { name: 'Agentes AI', href: '/ai-agents', icon: Bot },
+    ],
+  },
+  {
+    title: 'Roteamento',
+    items: [
+      { name: 'Canvas de Conexões', href: '/routing-canvas', icon: GitBranch },
+    ],
+  },
+  {
+    items: [
+      { name: 'Configurações', href: '/settings', icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -51,25 +90,36 @@ export function Sidebar() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon size={20} />
-                  {item.name}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
+            {navigationSections.map((section, sectionIdx) => (
+              <div key={sectionIdx}>
+                {section.title && (
+                  <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {section.title}
+                  </h3>
+                )}
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon size={20} />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           {/* User section */}
