@@ -1,18 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bot, Save, Info, Zap, MessageSquare, Shield, Plus, Trash2, Star, Pencil } from 'lucide-react';
+import { Bot, Save, Info, Zap, MessageSquare, Plus, Trash2, Star, Pencil, Loader2 } from 'lucide-react';
 import { aiAgentsApi } from '@/lib/api/ontology';
+import { useOrganization } from '@/contexts/organization-context';
 import type { AIAgent, AIAgentCreate, AIAgentUpdate, AIModel } from '@/lib/api/types';
 
-const DEFAULT_SYSTEM_PROMPT = `Você é um assistente virtual prestativo e profissional.
-Seu objetivo é ajudar os clientes com suas dúvidas e necessidades.
+const DEFAULT_SYSTEM_PROMPT = `Voce e um assistente virtual prestativo e profissional.
+Seu objetivo e ajudar os clientes com suas duvidas e necessidades.
 Seja sempre cordial e objetivo em suas respostas.
 
-Se você não conseguir ajudar o cliente ou se ele solicitar falar com um atendente humano,
+Se voce nao conseguir ajudar o cliente ou se ele solicitar falar com um atendente humano,
 inclua [HANDOFF] em sua resposta para transferir a conversa.`;
 
 export default function AIAgentsPage() {
+  const { tenantId } = useOrganization();
   const [aiAgents, setAiAgents] = useState<AIAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,13 +41,17 @@ export default function AIAgentsPage() {
   const [keywordsInput, setKeywordsInput] = useState('');
 
   useEffect(() => {
-    loadAiAgents();
-  }, []);
+    if (tenantId) {
+      loadAiAgents();
+    }
+  }, [tenantId]);
 
   const loadAiAgents = async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
-      const data = await aiAgentsApi.list();
+      const data = await aiAgentsApi.list(tenantId);
       setAiAgents(data);
       setError(null);
     } catch (err) {
@@ -57,12 +63,14 @@ export default function AIAgentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
+
     setSaving(true);
     try {
       if (editingAgent) {
-        await aiAgentsApi.update(editingAgent.id, formData as AIAgentUpdate);
+        await aiAgentsApi.update(tenantId, editingAgent.id, formData as AIAgentUpdate);
       } else {
-        await aiAgentsApi.create(formData);
+        await aiAgentsApi.create(tenantId, formData);
       }
       setShowModal(false);
       setEditingAgent(null);
@@ -98,9 +106,11 @@ export default function AIAgentsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!tenantId) return;
     if (!confirm('Tem certeza que deseja desativar este agente AI?')) return;
+
     try {
-      await aiAgentsApi.delete(id);
+      await aiAgentsApi.delete(tenantId, id);
       loadAiAgents();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar agente AI');
@@ -108,11 +118,13 @@ export default function AIAgentsPage() {
   };
 
   const handleSetDefault = async (id: string) => {
+    if (!tenantId) return;
+
     try {
-      await aiAgentsApi.setDefault(id);
+      await aiAgentsApi.setDefault(tenantId, id);
       loadAiAgents();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao definir agente padrão');
+      setError(err instanceof Error ? err.message : 'Erro ao definir agente padrao');
     }
   };
 
@@ -139,6 +151,14 @@ export default function AIAgentsPage() {
     });
     setKeywordsInput('falar com atendente, pessoa real, atendimento humano, falar com humano');
   };
+
+  if (!tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -168,7 +188,7 @@ export default function AIAgentsPage() {
       {/* Success message */}
       {saved && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
-          Configurações salvas com sucesso!
+          Configuracoes salvas com sucesso!
         </div>
       )}
 
@@ -186,8 +206,8 @@ export default function AIAgentsPage() {
           <div className="text-sm text-blue-800">
             <p className="font-medium">Sobre os Agentes AI</p>
             <p className="mt-1">
-              Os agentes AI são o primeiro ponto de contato com os clientes. Eles respondem mensagens
-              automaticamente e podem transferir para um atendente humano quando necessário.
+              Os agentes AI sao o primeiro ponto de contato com os clientes. Eles respondem mensagens
+              automaticamente e podem transferir para um atendente humano quando necessario.
             </p>
           </div>
         </div>
@@ -224,7 +244,7 @@ export default function AIAgentsPage() {
                   <button
                     onClick={() => handleSetDefault(agent.id)}
                     className="p-1 text-gray-400 hover:text-yellow-600 transition-colors"
-                    title="Definir como padrão"
+                    title="Definir como padrao"
                   >
                     <Star size={18} />
                   </button>
@@ -259,7 +279,7 @@ export default function AIAgentsPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Máx. Mensagens:</span>
+                <span className="text-gray-500">Max. Mensagens:</span>
                 <span className="font-medium text-gray-700">{agent.max_messages_before_handoff}</span>
               </div>
             </div>
@@ -315,7 +335,7 @@ export default function AIAgentsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Bot className="text-blue-600" size={20} />
-                    <h3 className="font-medium text-gray-900">Configurações Básicas</h3>
+                    <h3 className="font-medium text-gray-900">Configuracoes Basicas</h3>
                   </div>
 
                   <div>
@@ -333,14 +353,14 @@ export default function AIAgentsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descrição
+                      Descricao
                     </label>
                     <input
                       type="text"
                       value={formData.description || ''}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Descrição opcional do agente"
+                      placeholder="Descricao opcional do agente"
                     />
                   </div>
 
@@ -354,7 +374,7 @@ export default function AIAgentsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="gpt-4o">GPT-4o (Recomendado)</option>
-                      <option value="gpt-4o-mini">GPT-4o Mini (Mais rápido)</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini (Mais rapido)</option>
                       <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
                       <option value="claude-3-5-haiku">Claude 3.5 Haiku</option>
                     </select>
@@ -370,7 +390,7 @@ export default function AIAgentsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Instruções para o AI *
+                      Instrucoes para o AI *
                     </label>
                     <textarea
                       required
@@ -408,7 +428,7 @@ export default function AIAgentsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Máx. Tokens
+                        Max. Tokens
                       </label>
                       <input
                         type="number"
@@ -428,7 +448,7 @@ export default function AIAgentsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="text-orange-600" size={20} />
-                    <h3 className="font-medium text-gray-900">Configurações de Handoff</h3>
+                    <h3 className="font-medium text-gray-900">Configuracoes de Handoff</h3>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -440,13 +460,13 @@ export default function AIAgentsPage() {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <label htmlFor="autoHandoff" className="text-sm text-gray-700">
-                      Habilitar handoff automático
+                      Habilitar handoff automatico
                     </label>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Máximo de mensagens antes do handoff
+                      Maximo de mensagens antes do handoff
                     </label>
                     <input
                       type="number"
@@ -462,7 +482,7 @@ export default function AIAgentsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Palavras-chave para handoff (separadas por vírgula)
+                      Palavras-chave para handoff (separadas por virgula)
                     </label>
                     <input
                       type="text"
@@ -477,13 +497,13 @@ export default function AIAgentsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="mt-1 text-sm text-gray-500">
-                      O AI transferirá automaticamente quando detectar estas frases.
+                      O AI transferira automaticamente quando detectar estas frases.
                     </p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Limiar de confiança para handoff ({((formData.confidence_threshold ?? 0.7) * 100).toFixed(0)}%)
+                      Limiar de confianca para handoff ({((formData.confidence_threshold ?? 0.7) * 100).toFixed(0)}%)
                     </label>
                     <input
                       type="range"
@@ -527,7 +547,7 @@ export default function AIAgentsPage() {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <label htmlFor="is_default" className="text-sm text-gray-700">
-                      Definir como agente padrão
+                      Definir como agente padrao
                     </label>
                   </div>
                 </div>

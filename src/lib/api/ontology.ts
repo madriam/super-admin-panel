@@ -38,7 +38,7 @@ async function fetchApi<T>(
   const url = `${API_BASE}/api/v1${endpoint}`;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'X-Tenant-ID': tenantId,
+    ...(tenantId ? { 'X-Tenant-ID': tenantId } : {}),
     ...options.headers,
   };
 
@@ -121,204 +121,218 @@ export const organizationsApi = {
 // ========== Departments ==========
 
 export const departmentsApi = {
-  list: (params?: { is_active?: boolean; parent_id?: string }) =>
+  list: (tenantId: string, params?: { is_active?: boolean; parent_id?: string }) =>
     fetchApi<Department[]>(
-      `/departments${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/departments${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<Department>(`/departments/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<Department>(`/departments/${id}`, {}, tenantId),
 
-  create: (data: DepartmentCreate) =>
+  create: (tenantId: string, data: DepartmentCreate) =>
     fetchApi<Department>('/departments', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  update: (id: string, data: DepartmentUpdate) =>
+  update: (tenantId: string, id: string, data: DepartmentUpdate) =>
     fetchApi<Department>(`/departments/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/departments/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 
-  getHierarchy: (id: string) => fetchApi<Department>(`/departments/${id}/hierarchy`),
+  getHierarchy: (tenantId: string, id: string) => fetchApi<Department>(`/departments/${id}/hierarchy`, {}, tenantId),
 
-  getRoots: () => fetchApi<Department[]>('/departments/roots'),
+  getRoots: (tenantId: string) => fetchApi<Department[]>('/departments/roots', {}, tenantId),
 };
 
 // ========== Agents ==========
 
 export const agentsApi = {
-  list: (params?: { department_id?: string; status_filter?: string; is_active?: boolean }) =>
+  list: (tenantId: string, params?: { department_id?: string; status_filter?: string; is_active?: boolean }) =>
     fetchApi<Agent[]>(
-      `/agents${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/agents${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<Agent>(`/agents/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<Agent>(`/agents/${id}`, {}, tenantId),
 
-  getByExternalId: (externalId: string) =>
-    fetchApi<Agent>(`/agents/external/${externalId}`),
+  getByExternalId: (tenantId: string, externalId: string) =>
+    fetchApi<Agent>(`/agents/external/${externalId}`, {}, tenantId),
 
-  getAvailable: (params?: { department_id?: string; skills?: string }) =>
+  getAvailable: (tenantId: string, params?: { department_id?: string; skills?: string }) =>
     fetchApi<Agent[]>(
-      `/agents/available${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/agents/available${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  create: (data: AgentCreate) =>
+  create: (tenantId: string, data: AgentCreate) =>
     fetchApi<Agent>('/agents', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  update: (id: string, data: AgentUpdate) =>
+  update: (tenantId: string, id: string, data: AgentUpdate) =>
     fetchApi<Agent>(`/agents/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  updateStatus: (id: string, status: string) =>
+  updateStatus: (tenantId: string, id: string, status: string) =>
     fetchApi<Agent>(`/agents/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/agents/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 };
 
 // ========== Queues ==========
 
 export const queuesApi = {
-  list: (params?: { department_id?: string; is_active?: boolean }) =>
+  list: (tenantId: string, params?: { department_id?: string; is_active?: boolean }) =>
     fetchApi<Queue[]>(
-      `/queues${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/queues${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<Queue>(`/queues/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<Queue>(`/queues/${id}`, {}, tenantId),
 
-  getDefault: (departmentId: string) =>
-    fetchApi<Queue>(`/queues/department/${departmentId}/default`),
+  getDefault: (tenantId: string, departmentId: string) =>
+    fetchApi<Queue>(`/queues/department/${departmentId}/default`, {}, tenantId),
 
-  create: (data: QueueCreate) =>
+  create: (tenantId: string, data: QueueCreate) =>
     fetchApi<Queue>('/queues', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  update: (id: string, data: QueueUpdate) =>
+  update: (tenantId: string, id: string, data: QueueUpdate) =>
     fetchApi<Queue>(`/queues/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/queues/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 };
 
 // ========== AI Agents ==========
 
 export const aiAgentsApi = {
-  list: (params?: { is_active?: boolean }) =>
+  list: (tenantId: string, params?: { is_active?: boolean }) =>
     fetchApi<AIAgent[]>(
-      `/ai-agents${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/ai-agents${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<AIAgent>(`/ai-agents/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<AIAgent>(`/ai-agents/${id}`, {}, tenantId),
 
-  getDefault: () => fetchApi<AIAgent>('/ai-agents/default'),
+  getDefault: (tenantId: string) => fetchApi<AIAgent>('/ai-agents/default', {}, tenantId),
 
-  create: (data: AIAgentCreate) =>
+  create: (tenantId: string, data: AIAgentCreate) =>
     fetchApi<AIAgent>('/ai-agents', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  update: (id: string, data: AIAgentUpdate) =>
+  update: (tenantId: string, id: string, data: AIAgentUpdate) =>
     fetchApi<AIAgent>(`/ai-agents/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  setDefault: (id: string) =>
+  setDefault: (tenantId: string, id: string) =>
     fetchApi<AIAgent>(`/ai-agents/${id}/set-default`, {
       method: 'POST',
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/ai-agents/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 };
 
 // ========== Integrations ==========
 
 export const integrationsApi = {
-  list: (params?: { type?: string; is_active?: boolean }) =>
+  list: (tenantId: string, params?: { type?: string; is_active?: boolean }) =>
     fetchApi<Integration[]>(
-      `/integrations${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/integrations${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<Integration>(`/integrations/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<Integration>(`/integrations/${id}`, {}, tenantId),
 
-  create: (data: IntegrationCreate) =>
+  create: (tenantId: string, data: IntegrationCreate) =>
     fetchApi<Integration>('/integrations', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  update: (id: string, data: IntegrationUpdate) =>
+  update: (tenantId: string, id: string, data: IntegrationUpdate) =>
     fetchApi<Integration>(`/integrations/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/integrations/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 
-  getRoutingImpact: (id: string) =>
-    fetchApi<IntegrationRoutingImpact>(`/integrations/${id}/routing-impact`),
+  getRoutingImpact: (tenantId: string, id: string) =>
+    fetchApi<IntegrationRoutingImpact>(`/integrations/${id}/routing-impact`, {}, tenantId),
 
-  disable: (id: string, confirm: boolean = false) =>
+  disable: (tenantId: string, id: string, confirm: boolean = false) =>
     fetchApi<Integration>(`/integrations/${id}/disable?confirm=${confirm}`, {
       method: 'POST',
-    }),
+    }, tenantId),
 };
 
 // ========== Routing Rules ==========
 
 export const routingApi = {
-  list: (params?: { source_type?: string; source_id?: string; is_active?: boolean }) =>
+  list: (tenantId: string, params?: { source_type?: string; source_id?: string; is_active?: boolean }) =>
     fetchApi<RoutingRule[]>(
-      `/routing-rules${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/routing-rules${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  get: (id: string) => fetchApi<RoutingRule>(`/routing-rules/${id}`),
+  get: (tenantId: string, id: string) => fetchApi<RoutingRule>(`/routing-rules/${id}`, {}, tenantId),
 
-  create: (data: RoutingRuleCreate) =>
+  create: (tenantId: string, data: RoutingRuleCreate) =>
     fetchApi<RoutingRule>('/routing-rules', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    }, tenantId),
 
-  delete: (id: string) =>
+  delete: (tenantId: string, id: string) =>
     fetchApi<void>(`/routing-rules/${id}`, {
       method: 'DELETE',
-    }),
+    }, tenantId),
 
   // Canvas endpoints
-  getCanvasData: () => fetchApi<CanvasData>('/routing-rules/ontology/canvas'),
+  getCanvasData: (tenantId: string) => fetchApi<CanvasData>('/routing-rules/ontology/canvas', {}, tenantId),
 
-  savePositions: (positions: Array<{
+  savePositions: (tenantId: string, positions: Array<{
     node_type: string;
     node_id?: string;
     position_x: number;
@@ -327,23 +341,25 @@ export const routingApi = {
     fetchApi<unknown>('/routing-rules/ontology/positions', {
       method: 'PUT',
       body: JSON.stringify({ positions }),
-    }),
+    }, tenantId),
 };
 
 // ========== Delegation ==========
 
 export const delegationApi = {
-  getOptions: (params?: { source_type?: string; source_id?: string }) =>
+  getOptions: (tenantId: string, params?: { source_type?: string; source_id?: string }) =>
     fetchApi<DelegationOption[]>(
-      `/delegation/options${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`
+      `/delegation/options${params ? `?${new URLSearchParams(params as Record<string, string>)}` : ''}`,
+      {},
+      tenantId
     ),
 
-  getOptionsForAgent: (agentId: string) =>
-    fetchApi<DelegationOption[]>(`/delegation/options/for-agent/${agentId}`),
+  getOptionsForAgent: (tenantId: string, agentId: string) =>
+    fetchApi<DelegationOption[]>(`/delegation/options/for-agent/${agentId}`, {}, tenantId),
 
-  getOptionsForDepartment: (departmentId: string) =>
-    fetchApi<DelegationOption[]>(`/delegation/options/for-department/${departmentId}`),
+  getOptionsForDepartment: (tenantId: string, departmentId: string) =>
+    fetchApi<DelegationOption[]>(`/delegation/options/for-department/${departmentId}`, {}, tenantId),
 
-  getOptionsForQueue: (queueId: string) =>
-    fetchApi<DelegationOption[]>(`/delegation/options/for-queue/${queueId}`),
+  getOptionsForQueue: (tenantId: string, queueId: string) =>
+    fetchApi<DelegationOption[]>(`/delegation/options/for-queue/${queueId}`, {}, tenantId),
 };

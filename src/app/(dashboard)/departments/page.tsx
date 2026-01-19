@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronRight, Network, Users, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, Network, Users, Layers, Loader2 } from 'lucide-react';
 import { departmentsApi } from '@/lib/api/ontology';
+import { useOrganization } from '@/contexts/organization-context';
 import type { Department, DepartmentCreate, DepartmentUpdate } from '@/lib/api/types';
 
 export default function DepartmentsPage() {
+  const { tenantId } = useOrganization();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +23,17 @@ export default function DepartmentsPage() {
   });
 
   useEffect(() => {
-    loadDepartments();
-  }, []);
+    if (tenantId) {
+      loadDepartments();
+    }
+  }, [tenantId]);
 
   const loadDepartments = async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
-      const data = await departmentsApi.list();
+      const data = await departmentsApi.list(tenantId);
       setDepartments(data);
       setError(null);
     } catch (err) {
@@ -39,11 +45,13 @@ export default function DepartmentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
+
     try {
       if (editingDepartment) {
-        await departmentsApi.update(editingDepartment.id, formData as DepartmentUpdate);
+        await departmentsApi.update(tenantId, editingDepartment.id, formData as DepartmentUpdate);
       } else {
-        await departmentsApi.create(formData);
+        await departmentsApi.create(tenantId, formData);
       }
       setShowModal(false);
       setEditingDepartment(null);
@@ -66,9 +74,11 @@ export default function DepartmentsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!tenantId) return;
     if (!confirm('Tem certeza que deseja desativar este departamento?')) return;
+
     try {
-      await departmentsApi.delete(id);
+      await departmentsApi.delete(tenantId, id);
       loadDepartments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar departamento');
@@ -80,6 +90,14 @@ export default function DepartmentsPage() {
     setFormData({ name: '', description: '', parent_department_id: null, is_active: true });
     setShowModal(true);
   };
+
+  if (!tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -185,7 +203,7 @@ export default function DepartmentsPage() {
           <Network className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum departamento</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Comece criando o primeiro departamento da organização.
+            Comece criando o primeiro departamento da organizacao.
           </p>
           <button
             onClick={openCreateModal}
@@ -227,14 +245,14 @@ export default function DepartmentsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição
+                    Descricao
                   </label>
                   <textarea
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={3}
-                    placeholder="Descrição do departamento..."
+                    placeholder="Descricao do departamento..."
                   />
                 </div>
 

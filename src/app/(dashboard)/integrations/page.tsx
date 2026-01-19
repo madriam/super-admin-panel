@@ -17,8 +17,10 @@ import {
   AlertCircle,
   CheckCircle,
   X,
+  Loader2,
 } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/ontology';
+import { useOrganization } from '@/contexts/organization-context';
 import type { Integration, IntegrationCreate, IntegrationUpdate, IntegrationType } from '@/lib/api/types';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 
@@ -37,6 +39,7 @@ const getIntegrationType = (type: IntegrationType) =>
   INTEGRATION_TYPES.find((t) => t.value === type) || INTEGRATION_TYPES[6];
 
 export default function IntegrationsPage() {
+  const { tenantId } = useOrganization();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,24 +71,30 @@ export default function IntegrationsPage() {
   });
 
   const loadIntegrations = async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
       setError(null);
-      const data = await integrationsApi.list();
+      const data = await integrationsApi.list(tenantId);
       setIntegrations(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar integrações');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar integracoes');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadIntegrations();
-  }, []);
+    if (tenantId) {
+      loadIntegrations();
+    }
+  }, [tenantId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
+
     setSaving(true);
     setError(null);
 
@@ -95,18 +104,18 @@ export default function IntegrationsPage() {
           name: formData.name,
           description: formData.description,
         };
-        await integrationsApi.update(editingIntegration.id, updateData);
-        setSuccess('Integração atualizada com sucesso!');
+        await integrationsApi.update(tenantId, editingIntegration.id, updateData);
+        setSuccess('Integracao atualizada com sucesso!');
       } else {
-        await integrationsApi.create(formData);
-        setSuccess('Integração criada com sucesso!');
+        await integrationsApi.create(tenantId, formData);
+        setSuccess('Integracao criada com sucesso!');
       }
       setShowModal(false);
       setEditingIntegration(null);
       setFormData({ type: 'whatsapp', name: '', description: '', is_active: true });
       await loadIntegrations();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar integração');
+      setError(err instanceof Error ? err.message : 'Erro ao salvar integracao');
     } finally {
       setSaving(false);
     }
@@ -124,69 +133,75 @@ export default function IntegrationsPage() {
   };
 
   const handleDisable = async (integration: Integration) => {
+    if (!tenantId) return;
+
     try {
       // Check for routing impact first
-      const impact = await integrationsApi.getRoutingImpact(integration.id);
+      const impact = await integrationsApi.getRoutingImpact(tenantId, integration.id);
 
       if (impact.affected_routing_rules > 0) {
         setConfirmDialog({
           isOpen: true,
-          title: 'Desativar Integração',
-          message: `A integração "${integration.name}" possui ${impact.affected_routing_rules} regra(s) de roteamento. Ao desativar, essas regras serão removidas.`,
+          title: 'Desativar Integracao',
+          message: `A integracao "${integration.name}" possui ${impact.affected_routing_rules} regra(s) de roteamento. Ao desativar, essas regras serao removidas.`,
           details: [
-            `${impact.affected_routing_rules} regra(s) de roteamento serão removidas`,
-            'Esta ação não pode ser desfeita',
+            `${impact.affected_routing_rules} regra(s) de roteamento serao removidas`,
+            'Esta acao nao pode ser desfeita',
           ],
           variant: 'warning',
           onConfirm: async () => {
             try {
-              await integrationsApi.disable(integration.id, true);
-              setSuccess('Integração desativada com sucesso!');
+              await integrationsApi.disable(tenantId, integration.id, true);
+              setSuccess('Integracao desativada com sucesso!');
               await loadIntegrations();
             } catch (err) {
-              setError(err instanceof Error ? err.message : 'Erro ao desativar integração');
+              setError(err instanceof Error ? err.message : 'Erro ao desativar integracao');
             }
             setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
           },
         });
       } else {
         // No routing rules, just disable
-        await integrationsApi.disable(integration.id, false);
-        setSuccess('Integração desativada com sucesso!');
+        await integrationsApi.disable(tenantId, integration.id, false);
+        setSuccess('Integracao desativada com sucesso!');
         await loadIntegrations();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao desativar integração');
+      setError(err instanceof Error ? err.message : 'Erro ao desativar integracao');
     }
   };
 
   const handleEnable = async (integration: Integration) => {
+    if (!tenantId) return;
+
     try {
-      await integrationsApi.update(integration.id, { is_active: true });
-      setSuccess('Integração ativada com sucesso!');
+      await integrationsApi.update(tenantId, integration.id, { is_active: true });
+      setSuccess('Integracao ativada com sucesso!');
       await loadIntegrations();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao ativar integração');
+      setError(err instanceof Error ? err.message : 'Erro ao ativar integracao');
     }
   };
 
   const handleDelete = (integration: Integration) => {
+    if (!tenantId) return;
+
     setConfirmDialog({
       isOpen: true,
-      title: 'Excluir Integração',
-      message: `Tem certeza que deseja excluir a integração "${integration.name}"?`,
+      title: 'Excluir Integracao',
+      message: `Tem certeza que deseja excluir a integracao "${integration.name}"?`,
       details: [
-        'Esta ação não pode ser desfeita',
-        'Todas as regras de roteamento associadas serão removidas',
+        'Esta acao nao pode ser desfeita',
+        'Todas as regras de roteamento associadas serao removidas',
       ],
       variant: 'danger',
       onConfirm: async () => {
         try {
-          await integrationsApi.delete(integration.id);
-          setSuccess('Integração excluída com sucesso!');
+          await integrationsApi.delete(tenantId, integration.id);
+          setSuccess('Integracao excluida com sucesso!');
           await loadIntegrations();
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Erro ao excluir integração');
+          setError(err instanceof Error ? err.message : 'Erro ao excluir integracao');
         }
         setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
       },
@@ -207,6 +222,14 @@ export default function IntegrationsPage() {
     }
   }, [success]);
 
+  if (!tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -220,7 +243,7 @@ export default function IntegrationsPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Integrações</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Integracoes</h1>
           <p className="text-gray-600 mt-1">
             Gerencie canais de entrada (WhatsApp, Instagram, etc.)
           </p>
@@ -230,7 +253,7 @@ export default function IntegrationsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={18} />
-          Nova Integração
+          Nova Integracao
         </button>
       </div>
 
@@ -261,17 +284,17 @@ export default function IntegrationsPage() {
             <MessageCircle size={32} className="text-blue-600" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Nenhuma integração configurada
+            Nenhuma integracao configurada
           </h3>
           <p className="text-gray-500 mb-4">
-            Adicione uma integração para começar a receber conversas de canais como WhatsApp, Instagram, etc.
+            Adicione uma integracao para comecar a receber conversas de canais como WhatsApp, Instagram, etc.
           </p>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus size={18} />
-            Adicionar Integração
+            Adicionar Integracao
           </button>
         </div>
       ) : (
@@ -390,7 +413,7 @@ export default function IntegrationsPage() {
               </button>
 
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                {editingIntegration ? 'Editar Integração' : 'Nova Integração'}
+                {editingIntegration ? 'Editar Integracao' : 'Nova Integracao'}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -398,7 +421,7 @@ export default function IntegrationsPage() {
                 {!editingIntegration && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Integração
+                      Tipo de Integracao
                     </label>
                     <div className="grid grid-cols-4 gap-2">
                       {INTEGRATION_TYPES.map((type) => {
@@ -446,12 +469,12 @@ export default function IntegrationsPage() {
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição
+                    Descricao
                   </label>
                   <textarea
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Descrição da integração..."
+                    placeholder="Descricao da integracao..."
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />

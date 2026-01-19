@@ -6,8 +6,6 @@ import { useAuth } from '@/hooks/use-auth';
 import {
   LayoutDashboard,
   Building2,
-  MessageSquare,
-  Users,
   Settings,
   LogOut,
   Menu,
@@ -20,6 +18,7 @@ import {
   Plug,
 } from 'lucide-react';
 import { useState } from 'react';
+import { OrgSelector } from '@/components/org-selector';
 
 interface NavItem {
   name: string;
@@ -35,10 +34,7 @@ interface NavSection {
 const navigationSections: NavSection[] = [
   {
     items: [
-      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-      { name: 'Organizações', href: '/organizations', icon: Building2 },
-      { name: 'Conversas', href: '/conversations', icon: MessageSquare },
-      { name: 'Usuários', href: '/users', icon: Users },
+      { name: 'Visao Geral', href: '/', icon: LayoutDashboard },
     ],
   },
   {
@@ -53,13 +49,14 @@ const navigationSections: NavSection[] = [
   {
     title: 'Roteamento',
     items: [
-      { name: 'Integrações', href: '/integrations', icon: Plug },
-      { name: 'Canvas de Conexões', href: '/routing-canvas', icon: GitBranch },
+      { name: 'Integracoes', href: '/integrations', icon: Plug },
+      { name: 'Canvas de Conexoes', href: '/routing-canvas', icon: GitBranch },
     ],
   },
   {
     items: [
-      { name: 'Configurações', href: '/settings', icon: Settings },
+      { name: 'Organizacoes', href: '/organizations', icon: Building2 },
+      { name: 'Configuracoes', href: '/settings', icon: Settings },
     ],
   },
 ];
@@ -86,9 +83,9 @@ export function Sidebar() {
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">Auto Peças AI</h1>
+          {/* Org Selector in Header */}
+          <div className="flex items-center h-16 px-3 border-b border-gray-200">
+            <OrgSelector />
           </div>
 
           {/* Navigation */}
@@ -134,7 +131,7 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.displayName || 'Usuário'}
+                  {user?.displayName || 'Usuario'}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>

@@ -40,6 +40,7 @@ import Link from 'next/link';
 import { routingApi } from '@/lib/api/ontology';
 import type { CanvasNode, CanvasEdge, RoutingRuleCreate, SourceType, DestinationType } from '@/lib/api/types';
 import { nodeTypes } from './custom-node';
+import { useOrganization } from '@/contexts/organization-context';
 
 // Debounce helper
 function debounce<T extends (...args: Parameters<T>) => void>(
@@ -76,6 +77,7 @@ const VALID_ROUTING_RULES: Record<string, Set<string>> = {
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
 function RoutingCanvasContent() {
+  const { tenantId } = useOrganization();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<RoutingEdge>([]);
   const [loading, setLoading] = useState(true);
@@ -89,18 +91,25 @@ function RoutingCanvasContent() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const reactFlowInstance = useReactFlow();
   const nodesRef = useRef(nodes);
+  const tenantIdRef = useRef(tenantId);
 
-  // Keep nodesRef in sync
+  // Keep refs in sync
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
 
+  useEffect(() => {
+    tenantIdRef.current = tenantId;
+  }, [tenantId]);
+
   // Load canvas data from API
   const loadCanvasData = useCallback(async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
       setError(null);
-      const data = await routingApi.getCanvasData();
+      const data = await routingApi.getCanvasData(tenantId);
 
       // Convert API nodes to React Flow nodes
       const flowNodes: Node[] = data.nodes.map((n: CanvasNode) => ({
@@ -136,7 +145,7 @@ function RoutingCanvasContent() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [tenantId, setNodes, setEdges]);
 
   useEffect(() => {
     loadCanvasData();
@@ -147,7 +156,8 @@ function RoutingCanvasContent() {
     () =>
       debounce(async () => {
         const currentNodes = nodesRef.current;
-        if (currentNodes.length === 0) return;
+        const currentTenantId = tenantIdRef.current;
+        if (currentNodes.length === 0 || !currentTenantId) return;
 
         try {
           setSaveStatus('saving');
@@ -194,7 +204,7 @@ function RoutingCanvasContent() {
             };
           });
 
-          await routingApi.savePositions(positions);
+          await routingApi.savePositions(currentTenantId, positions);
           setSaveStatus('saved');
           setHasChanges(false);
         } catch (err) {
@@ -208,7 +218,7 @@ function RoutingCanvasContent() {
   // Handle new connection (create routing rule)
   const onConnect = useCallback(
     async (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
+      if (!connection.source || !connection.target || !tenantId) return;
 
       // Parse source and target to get type and ID
       const parseNodeId = (nodeId: string): { type: string; id: string | null } => {
@@ -265,7 +275,7 @@ function RoutingCanvasContent() {
           is_active: true,
         };
 
-        const createdRule = await routingApi.create(rule);
+        const createdRule = await routingApi.create(tenantId, rule);
 
         // Add edge to canvas
         const newEdge: RoutingEdge = {
@@ -290,7 +300,7 @@ function RoutingCanvasContent() {
         setError(err instanceof Error ? err.message : 'Erro ao criar conexão');
       }
     },
-    [setEdges]
+    [tenantId, setEdges]
   );
 
   // Handle edge click (select for deletion)
@@ -300,17 +310,17 @@ function RoutingCanvasContent() {
 
   // Delete selected edge
   const deleteSelectedEdge = useCallback(async () => {
-    if (!selectedEdge?.data?.ruleId) return;
+    if (!selectedEdge?.data?.ruleId || !tenantId) return;
 
     try {
-      await routingApi.delete(selectedEdge.data.ruleId);
+      await routingApi.delete(tenantId, selectedEdge.data.ruleId);
       setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
       setSelectedEdge(null);
       setHasChanges(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar conexão');
     }
-  }, [selectedEdge, setEdges]);
+  }, [tenantId, selectedEdge, setEdges]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -348,6 +358,8 @@ function RoutingCanvasContent() {
 
   // Save node positions
   const savePositions = async () => {
+    if (!tenantId) return;
+
     try {
       setSaving(true);
       const positions = nodes.map((n) => {
@@ -393,7 +405,7 @@ function RoutingCanvasContent() {
         };
       });
 
-      await routingApi.savePositions(positions);
+      await routingApi.savePositions(tenantId, positions);
       setHasChanges(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar posições');
@@ -422,7 +434,7 @@ function RoutingCanvasContent() {
   // Check if there are no integrations
   const hasIntegrations = nodes.some((n) => n.type === 'integration');
 
-  if (loading) {
+  if (!tenantId || loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />

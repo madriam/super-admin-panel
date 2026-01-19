@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Layers, Users, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Layers, Clock, Loader2 } from 'lucide-react';
 import { queuesApi, departmentsApi } from '@/lib/api/ontology';
+import { useOrganization } from '@/contexts/organization-context';
 import type { Queue, QueueCreate, QueueUpdate, RoutingStrategy, Department } from '@/lib/api/types';
 
 const strategyLabels: Record<RoutingStrategy, string> = {
@@ -12,6 +13,7 @@ const strategyLabels: Record<RoutingStrategy, string> = {
 };
 
 export default function QueuesPage() {
+  const { tenantId } = useOrganization();
   const [queues, setQueues] = useState<Queue[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,15 +36,19 @@ export default function QueuesPage() {
   });
 
   useEffect(() => {
-    loadData();
-  }, [filterDepartment]);
+    if (tenantId) {
+      loadData();
+    }
+  }, [tenantId, filterDepartment]);
 
   const loadData = async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
       const [queuesData, deptsData] = await Promise.all([
-        queuesApi.list({ department_id: filterDepartment || undefined }),
-        departmentsApi.list(),
+        queuesApi.list(tenantId, { department_id: filterDepartment || undefined }),
+        departmentsApi.list(tenantId),
       ]);
       setQueues(queuesData);
       setDepartments(deptsData);
@@ -56,11 +62,13 @@ export default function QueuesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
+
     try {
       if (editingQueue) {
-        await queuesApi.update(editingQueue.id, formData as QueueUpdate);
+        await queuesApi.update(tenantId, editingQueue.id, formData as QueueUpdate);
       } else {
-        await queuesApi.create(formData);
+        await queuesApi.create(tenantId, formData);
       }
       setShowModal(false);
       setEditingQueue(null);
@@ -86,9 +94,11 @@ export default function QueuesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!tenantId) return;
     if (!confirm('Tem certeza que deseja desativar esta fila?')) return;
+
     try {
-      await queuesApi.delete(id);
+      await queuesApi.delete(tenantId, id);
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar fila');
@@ -112,6 +122,14 @@ export default function QueuesPage() {
     resetForm();
     setShowModal(true);
   };
+
+  if (!tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -180,7 +198,7 @@ export default function QueuesPage() {
                     <h3 className="font-semibold text-gray-900">{queue.name}</h3>
                     {queue.is_default && (
                       <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        Padrão
+                        Padrao
                       </span>
                     )}
                   </div>
@@ -287,13 +305,13 @@ export default function QueuesPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ex: Vendas - Geral, Suporte Técnico"
+                    placeholder="Ex: Vendas - Geral, Suporte Tecnico"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição
+                    Descricao
                   </label>
                   <textarea
                     value={formData.description || ''}
@@ -342,7 +360,7 @@ export default function QueuesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Estratégia
+                      Estrategia
                     </label>
                     <select
                       value={formData.routing_strategy}
@@ -371,7 +389,7 @@ export default function QueuesPage() {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <label htmlFor="is_default" className="text-sm text-gray-700">
-                      Fila padrão do departamento
+                      Fila padrao do departamento
                     </label>
                   </div>
                   <div className="flex items-center gap-2">

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Headphones, Circle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Headphones, Loader2 } from 'lucide-react';
 import { agentsApi, departmentsApi } from '@/lib/api/ontology';
+import { useOrganization } from '@/contexts/organization-context';
 import type { Agent, AgentCreate, AgentUpdate, AgentStatus, Department } from '@/lib/api/types';
 
 const statusConfig: Record<AgentStatus, { label: string; color: string; bgColor: string }> = {
@@ -13,6 +14,7 @@ const statusConfig: Record<AgentStatus, { label: string; color: string; bgColor:
 };
 
 export default function AgentsPage() {
+  const { tenantId } = useOrganization();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,18 +39,22 @@ export default function AgentsPage() {
   const [skillsInput, setSkillsInput] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, [filterDepartment, filterStatus]);
+    if (tenantId) {
+      loadData();
+    }
+  }, [tenantId, filterDepartment, filterStatus]);
 
   const loadData = async () => {
+    if (!tenantId) return;
+
     try {
       setLoading(true);
       const [agentsData, deptsData] = await Promise.all([
-        agentsApi.list({
+        agentsApi.list(tenantId, {
           department_id: filterDepartment || undefined,
           status_filter: filterStatus || undefined,
         }),
-        departmentsApi.list(),
+        departmentsApi.list(tenantId),
       ]);
       setAgents(agentsData);
       setDepartments(deptsData);
@@ -62,15 +68,17 @@ export default function AgentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) return;
+
     try {
       const data = {
         ...formData,
         skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
       };
       if (editingAgent) {
-        await agentsApi.update(editingAgent.id, data as AgentUpdate);
+        await agentsApi.update(tenantId, editingAgent.id, data as AgentUpdate);
       } else {
-        await agentsApi.create(data);
+        await agentsApi.create(tenantId, data);
       }
       setShowModal(false);
       setEditingAgent(null);
@@ -97,9 +105,11 @@ export default function AgentsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!tenantId) return;
     if (!confirm('Tem certeza que deseja desativar este atendente?')) return;
+
     try {
-      await agentsApi.delete(id);
+      await agentsApi.delete(tenantId, id);
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar atendente');
@@ -107,8 +117,10 @@ export default function AgentsPage() {
   };
 
   const handleStatusChange = async (agent: Agent, newStatus: AgentStatus) => {
+    if (!tenantId) return;
+
     try {
-      await agentsApi.updateStatus(agent.id, newStatus);
+      await agentsApi.updateStatus(tenantId, agent.id, newStatus);
       loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar status');
@@ -133,6 +145,14 @@ export default function AgentsPage() {
     resetForm();
     setShowModal(true);
   };
+
+  if (!tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -214,7 +234,7 @@ export default function AgentsPage() {
                 Skills
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ações
+                Acoes
               </th>
             </tr>
           </thead>
@@ -363,20 +383,20 @@ export default function AgentsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Skills (separados por vírgula)
+                    Skills (separados por virgula)
                   </label>
                   <input
                     type="text"
                     value={skillsInput}
                     onChange={(e) => setSkillsInput(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="vendas, suporte, técnico"
+                    placeholder="vendas, suporte, tecnico"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Máx. Chats Simultâneos
+                    Max. Chats Simultaneos
                   </label>
                   <input
                     type="number"
