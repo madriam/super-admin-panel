@@ -18,7 +18,7 @@ const ZitadelProvider = {
   issuer: process.env.ZITADEL_ISSUER,
   clientId: process.env.ZITADEL_CLIENT_ID,
   clientSecret: '', // Not required for PKCE
-  checks: ['pkce', 'state'] as const,
+  checks: ['pkce', 'state'] as ('pkce' | 'state')[],
   authorization: {
     params: {
       scope: 'openid profile email urn:zitadel:iam:org:project:id:zitadel:aud',
