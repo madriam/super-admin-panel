@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useAuthorization, Permission } from '@/contexts/authorization-context';
 import {
   LayoutDashboard,
   Building2,
@@ -16,14 +17,17 @@ import {
   Bot,
   Layers,
   Plug,
+  Shield,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { OrgSelector } from '@/components/org-selector';
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ size?: number }>;
+  permission?: Permission;
+  superAdminOnly?: boolean;
 }
 
 interface NavSection {
@@ -34,37 +38,56 @@ interface NavSection {
 const navigationSections: NavSection[] = [
   {
     items: [
-      { name: 'Visao Geral', href: '/', icon: LayoutDashboard },
+      { name: 'Visao Geral', href: '/', icon: LayoutDashboard, permission: 'dashboard:view' },
     ],
   },
   {
     title: 'Estrutura Organizacional',
     items: [
-      { name: 'Departamentos', href: '/departments', icon: Network },
-      { name: 'Atendentes', href: '/agents', icon: Headphones },
-      { name: 'Filas', href: '/queues', icon: Layers },
-      { name: 'Agentes AI', href: '/ai-agents', icon: Bot },
+      { name: 'Departamentos', href: '/departments', icon: Network, permission: 'departments:list' },
+      { name: 'Atendentes', href: '/agents', icon: Headphones, permission: 'agents:list' },
+      { name: 'Filas', href: '/queues', icon: Layers, permission: 'queues:list' },
+      { name: 'Agentes AI', href: '/ai-agents', icon: Bot, permission: 'ai_agents:list' },
     ],
   },
   {
     title: 'Roteamento',
     items: [
-      { name: 'Integracoes', href: '/integrations', icon: Plug },
-      { name: 'Canvas de Conexoes', href: '/routing-canvas', icon: GitBranch },
+      { name: 'Integracoes', href: '/integrations', icon: Plug, permission: 'integrations:list' },
+      { name: 'Canvas de Conexoes', href: '/routing-canvas', icon: GitBranch, permission: 'routing:view' },
     ],
   },
   {
+    title: 'Administracao',
     items: [
-      { name: 'Organizacoes', href: '/organizations', icon: Building2 },
-      { name: 'Configuracoes', href: '/settings', icon: Settings },
+      { name: 'Organizacoes', href: '/organizations', icon: Building2, permission: 'organizations:list' },
+      { name: 'Configuracoes', href: '/settings', icon: Settings, permission: 'settings:view' },
     ],
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isSuperAdmin } = useAuth();
+  const { hasPermission } = useAuthorization();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Filter navigation sections based on permissions
+  const filteredSections = useMemo(() => {
+    return navigationSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          // If super admin only, check that
+          if (item.superAdminOnly) return isSuperAdmin;
+          // If no permission required, show item
+          if (!item.permission) return true;
+          // Check permission
+          return hasPermission(item.permission);
+        }),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [hasPermission, isSuperAdmin]);
 
   return (
     <>
@@ -90,7 +113,7 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
-            {navigationSections.map((section, sectionIdx) => (
+            {filteredSections.map((section, sectionIdx) => (
               <div key={sectionIdx}>
                 {section.title && (
                   <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -124,11 +147,19 @@ export function Sidebar() {
           {/* User section */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-700 font-medium">
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
+              {user?.image ? (
+                <img
+                  src={user.image}
+                  alt={user.displayName || 'User'}
+                  className="w-10 h-10 rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-700 font-medium">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.displayName || 'Usuario'}

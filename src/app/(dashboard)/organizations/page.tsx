@@ -12,9 +12,12 @@ import {
   XCircle,
   X,
   Loader2,
+  Shield,
 } from 'lucide-react';
 import { organizationsApi } from '@/lib/api/ontology';
 import type { OrganizationSummary, OrganizationCreate, Organization } from '@/lib/api/types';
+import { PermissionGuard, SuperAdminOnly } from '@/components/permission-guard';
+import { useAuthorization } from '@/contexts/authorization-context';
 
 const PLAN_COLORS = {
   free: 'bg-gray-100 text-gray-800',
@@ -31,6 +34,7 @@ const PLAN_LABELS = {
 };
 
 export default function OrganizationsPage() {
+  const { hasPermission, isSuperAdmin } = useAuthorization();
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,10 @@ export default function OrganizationsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const canCreate = hasPermission('organizations:create');
+  const canEdit = hasPermission('organizations:edit');
+  const canDelete = hasPermission('organizations:delete');
 
   // Form state
   const [formData, setFormData] = useState<OrganizationCreate>({
@@ -228,17 +236,25 @@ export default function OrganizationsPage() {
           <p className="mt-1 text-sm text-gray-500">
             Gerencie as empresas cadastradas na plataforma
           </p>
+          {isSuperAdmin && (
+            <span className="inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+              <Shield size={12} />
+              Super Admin
+            </span>
+          )}
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowCreateModal(true);
-          }}
-          className="mt-4 sm:mt-0 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={18} />
-          Nova Organizacao
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="mt-4 sm:mt-0 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            Nova Organizacao
+          </button>
+        )}
       </div>
 
       {error && (
@@ -272,18 +288,20 @@ export default function OrganizationsPage() {
             Nenhuma organizacao
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            Comece criando uma nova organizacao.
+            {canCreate ? 'Comece criando uma nova organizacao.' : 'Nenhuma organizacao disponivel.'}
           </p>
-          <button
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            Nova Organizacao
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => {
+                resetForm();
+                setShowCreateModal(true);
+              }}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              Nova Organizacao
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -368,20 +386,24 @@ export default function OrganizationsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => handleEdit(org)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Editar"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(org.id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Desativar"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(org)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Editar"
+                        >
+                          <Edit size={18} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(org.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Desativar"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
