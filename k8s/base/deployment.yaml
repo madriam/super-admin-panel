@@ -34,6 +34,10 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
+            - name: AUTH_TRUST_HOST
+              value: "true"
+            - name: NEXTAUTH_URL
+              value: "https://admin.ilhaperdida.com.br"
             - name: NEXT_PUBLIC_ONTOLOGY_API_URL
               value: "https://ontology.ilhaperdida.com.br"
             - name: NEXT_PUBLIC_DEFAULT_TENANT
