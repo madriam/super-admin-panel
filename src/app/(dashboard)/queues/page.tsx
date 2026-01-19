@@ -161,7 +161,7 @@ export default function QueuesPage() {
         <select
           value={filterDepartment}
           onChange={(e) => setFilterDepartment(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">Todos os departamentos</option>
           {departments.map((d) => (
@@ -304,7 +304,7 @@ export default function QueuesPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Ex: Vendas - Geral, Suporte Tecnico"
                   />
                 </div>
@@ -316,7 +316,7 @@ export default function QueuesPage() {
                   <textarea
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={2}
                   />
                 </div>
@@ -330,7 +330,7 @@ export default function QueuesPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, department_id: e.target.value || null })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Sem departamento</option>
                     {departments.map((d) => (
@@ -354,7 +354,7 @@ export default function QueuesPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, priority: parseInt(e.target.value) })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -370,7 +370,7 @@ export default function QueuesPage() {
                           routing_strategy: e.target.value as RoutingStrategy,
                         })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="round_robin">Round Robin</option>
                       <option value="least_busy">Menos Ocupado</option>

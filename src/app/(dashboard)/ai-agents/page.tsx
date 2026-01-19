@@ -347,7 +347,7 @@ export default function AIAgentsPage() {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -359,7 +359,7 @@ export default function AIAgentsPage() {
                       type="text"
                       value={formData.description || ''}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Descricao opcional do agente"
                     />
                   </div>
@@ -371,7 +371,7 @@ export default function AIAgentsPage() {
                     <select
                       value={formData.model}
                       onChange={(e) => setFormData({ ...formData, model: e.target.value as AIModel })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="gpt-4o">GPT-4o (Recomendado)</option>
                       <option value="gpt-4o-mini">GPT-4o Mini (Mais rapido)</option>
@@ -397,7 +397,7 @@ export default function AIAgentsPage() {
                       value={formData.system_prompt}
                       onChange={(e) => setFormData({ ...formData, system_prompt: e.target.value })}
                       rows={8}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                     />
                     <p className="mt-1 text-sm text-gray-500">
                       Use [HANDOFF] para indicar quando o AI deve transferir para um humano.
@@ -418,7 +418,7 @@ export default function AIAgentsPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, temperature: parseFloat(e.target.value) })
                         }
-                        className="w-full"
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                       />
                       <div className="flex justify-between text-xs text-gray-500">
                         <span>Preciso</span>
@@ -438,7 +438,7 @@ export default function AIAgentsPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, max_tokens: parseInt(e.target.value) })
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -476,7 +476,7 @@ export default function AIAgentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, max_messages_before_handoff: parseInt(e.target.value) })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -494,7 +494,7 @@ export default function AIAgentsPage() {
                           handoff_keywords: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
                         });
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="mt-1 text-sm text-gray-500">
                       O AI transferira automaticamente quando detectar estas frases.
@@ -514,7 +514,7 @@ export default function AIAgentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, confidence_threshold: parseFloat(e.target.value) })
                       }
-                      className="w-full"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>50% (Mais handoffs)</span>

@@ -46,7 +46,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   defaultValue={user?.displayName || ''}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Seu nome"
                 />
               </div>
@@ -58,7 +58,7 @@ export default function SettingsPage() {
                   type="email"
                   defaultValue={user?.email || ''}
                   disabled
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
