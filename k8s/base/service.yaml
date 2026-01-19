@@ -1,7 +1,10 @@
+---
+# Admin Panel Service
 apiVersion: v1
 kind: Service
 metadata:
   name: admin-panel
+  namespace: admin-panel
   labels:
     app: admin-panel
 spec:

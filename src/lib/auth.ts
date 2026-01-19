@@ -1,27 +1,27 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 
 /**
- * Zitadel OIDC Provider Configuration
+ * Zitadel OIDC Provider Configuration (PKCE - No Client Secret)
  *
  * Required environment variables:
  * - ZITADEL_ISSUER: https://auth.ilhaperdida.com.br
  * - ZITADEL_CLIENT_ID: From Zitadel console
- * - ZITADEL_CLIENT_SECRET: From Zitadel console
  * - NEXTAUTH_SECRET: Random 32-byte secret
  * - NEXTAUTH_URL: https://admin.ilhaperdida.com.br
  */
 
-// Custom Zitadel provider
+// Custom Zitadel provider with PKCE
 const ZitadelProvider = {
   id: 'zitadel',
   name: 'Zitadel',
   type: 'oidc' as const,
   issuer: process.env.ZITADEL_ISSUER,
   clientId: process.env.ZITADEL_CLIENT_ID,
-  clientSecret: process.env.ZITADEL_CLIENT_SECRET,
+  clientSecret: '', // Not required for PKCE
+  checks: ['pkce', 'state'] as const,
   authorization: {
     params: {
-      scope: 'openid profile email urn:zitadel:iam:org:id urn:zitadel:iam:user:metadata',
+      scope: 'openid profile email urn:zitadel:iam:org:project:id:zitadel:aud',
     },
   },
   profile(profile: {

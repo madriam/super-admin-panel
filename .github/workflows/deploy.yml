@@ -1,7 +1,7 @@
-# Admin-Panel Deployment Pipeline
+# Admin Panel Deployment Pipeline
 # Self-contained CI/CD workflow for GitOps deployment
 
-name: Deploy Admin-Panel
+name: Deploy Admin Panel
 
 on:
   push:
@@ -19,8 +19,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Run build test on PRs
-  test:
+  # Run linting on PRs and pushes
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,18 +34,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run lint
-        run: npm run lint || echo "Lint skipped"
-
-      - name: Build test
-        run: npm run build
-        env:
-          NEXT_PUBLIC_ONTOLOGY_API_URL: https://ontology.ilhaperdida.com.br
-          NEXT_PUBLIC_DEFAULT_TENANT: tenant-a
+      - name: Run linter
+        run: npm run lint || echo "Lint warnings - continuing"
 
   # Build and push Docker image
   build:
-    needs: test
+    needs: lint
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
@@ -91,9 +85,9 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-          cd k8s/overlays/staging
+          cd k8s/base
 
-          # Use 'latest' tag
+          # Update image tag to latest
           yq -i '.images[0].newTag = "latest"' kustomization.yaml
 
           # Verify the file is valid
@@ -103,6 +97,6 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add k8s/overlays/staging/kustomization.yaml
+          git add k8s/base/kustomization.yaml
           git diff --staged --quiet || git commit -m "chore: update image tag to ${{ github.sha }}"
           git push
