@@ -1,18 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 namespace: admin-panel
-
 resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-
 commonLabels:
   app.kubernetes.io/name: admin-panel
   app.kubernetes.io/component: web
   app.kubernetes.io/part-of: madriam-platform
-
 images:
   - name: ghcr.io/madriam/admin-panel
     newTag: latest
