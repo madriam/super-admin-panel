@@ -205,40 +205,6 @@ function RoutingCanvasContent() {
     []
   );
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // Delete selected edge
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
-        e.preventDefault();
-        deleteSelectedEdge();
-      }
-
-      // Escape - deselect or exit fullscreen
-      if (e.key === 'Escape') {
-        if (selectedEdge) {
-          setSelectedEdge(null);
-        } else if (isFullScreen) {
-          setIsFullScreen(false);
-        }
-      }
-
-      // F - fit view (when not in input)
-      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        reactFlowInstance?.fitView({ padding: 0.2 });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedEdge, isFullScreen, reactFlowInstance, deleteSelectedEdge]);
-
   // Handle new connection (create routing rule)
   const onConnect = useCallback(
     async (connection: Connection) => {
@@ -345,6 +311,40 @@ function RoutingCanvasContent() {
       setError(err instanceof Error ? err.message : 'Erro ao deletar conexão');
     }
   }, [selectedEdge, setEdges]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Delete selected edge
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) {
+        e.preventDefault();
+        deleteSelectedEdge();
+      }
+
+      // Escape - deselect or exit fullscreen
+      if (e.key === 'Escape') {
+        if (selectedEdge) {
+          setSelectedEdge(null);
+        } else if (isFullScreen) {
+          setIsFullScreen(false);
+        }
+      }
+
+      // F - fit view (when not in input)
+      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        reactFlowInstance?.fitView({ padding: 0.2 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEdge, isFullScreen, reactFlowInstance, deleteSelectedEdge]);
 
   // Save node positions
   const savePositions = async () => {
