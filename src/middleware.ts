@@ -9,16 +9,22 @@ const ORG_PANEL_WILDCARD = '.panel.ilhaperdida.com.br';
 
 // Super Admin auth configuration
 const SUPER_ADMIN_COOKIE = 'super_admin_token';
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.SUPER_ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-only-secret-change-me'
-);
+
+// Lazy-loaded JWT secret to avoid build-time errors
+let _jwtSecret: Uint8Array | null = null;
+function getJwtSecret(): Uint8Array {
+  if (_jwtSecret) return _jwtSecret;
+  const secretString = process.env.SUPER_ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-only-secret-change-me';
+  _jwtSecret = new TextEncoder().encode(secretString);
+  return _jwtSecret;
+}
 
 /**
  * Verify super admin JWT token in middleware
  */
 async function verifySuperAdminToken(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, JWT_SECRET, {
+    await jwtVerify(token, getJwtSecret(), {
       issuer: 'madriam-super-admin',
       audience: 'madriam-platform',
     });

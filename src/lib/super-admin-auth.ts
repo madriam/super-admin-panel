@@ -5,12 +5,19 @@ import { cookies } from 'next/headers';
 // CONFIGURATION
 // =============================================================================
 
-// JWT Secret - MUST be set in production environment
-const JWT_SECRET_STRING = process.env.SUPER_ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET;
-if (!JWT_SECRET_STRING && process.env.NODE_ENV === 'production') {
-  throw new Error('SUPER_ADMIN_JWT_SECRET environment variable is required in production');
+// Lazy-loaded JWT secret to avoid build-time errors
+let _jwtSecret: Uint8Array | null = null;
+
+function getJwtSecret(): Uint8Array {
+  if (_jwtSecret) return _jwtSecret;
+
+  const secretString = process.env.SUPER_ADMIN_JWT_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secretString && process.env.NODE_ENV === 'production') {
+    throw new Error('SUPER_ADMIN_JWT_SECRET environment variable is required in production');
+  }
+  _jwtSecret = new TextEncoder().encode(secretString || 'dev-only-secret-change-me');
+  return _jwtSecret;
 }
-const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING || 'dev-only-secret-change-me');
 
 const COOKIE_NAME = 'super_admin_token';
 const TOKEN_EXPIRY = '8h'; // Shorter expiry for security
@@ -225,7 +232,7 @@ export async function generateToken(user: SuperAdminUser): Promise<string> {
     .setSubject(user.id)
     .setIssuer('madriam-super-admin')
     .setAudience('madriam-platform')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 
   return token;
 }
@@ -235,7 +242,7 @@ export async function generateToken(user: SuperAdminUser): Promise<string> {
  */
 export async function verifyToken(token: string): Promise<SuperAdminTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
+    const { payload } = await jwtVerify(token, getJwtSecret(), {
       issuer: 'madriam-super-admin',
       audience: 'madriam-platform',
     });
