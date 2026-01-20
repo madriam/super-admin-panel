@@ -9,10 +9,23 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - admin.ilhaperdida.com.br
+        - super-admin.ilhaperdida.com.br
+        - panel.ilhaperdida.com.br
       secretName: admin-panel-tls
   rules:
-    - host: admin.ilhaperdida.com.br
+    # Super Admin Panel - Platform owner access (new domain)
+    - host: super-admin.ilhaperdida.com.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-panel
+                port:
+                  number: 80
+    # Org Admin Panel - Customer organization access
+    - host: panel.ilhaperdida.com.br
       http:
         paths:
           - path: /

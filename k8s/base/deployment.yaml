@@ -37,11 +37,22 @@ spec:
             - name: AUTH_TRUST_HOST
               value: "true"
             - name: NEXTAUTH_URL
-              value: "https://admin.ilhaperdida.com.br"
+              value: "https://super-admin.ilhaperdida.com.br"
             - name: NEXT_PUBLIC_ONTOLOGY_API_URL
               value: "https://ontology.ilhaperdida.com.br"
             - name: NEXT_PUBLIC_DEFAULT_TENANT
               value: "tenant-a"
+            # Service health check URLs
+            - name: WHATSAPP_GATEWAY_URL
+              value: "https://whatsapp.ilhaperdida.com.br/health"
+            - name: CHAT_AGENT_URL
+              value: "https://api.ilhaperdida.com.br/health"
+            - name: CHATWOOT_URL
+              value: "https://chat.ilhaperdida.com.br/api/v1/accounts"
+            - name: VAULT_URL
+              value: "https://caverna.ilhaperdida.com.br/v1/sys/health"
+            - name: ARGOCD_URL
+              value: "https://argocd.ilhaperdida.com.br/api/version"
           resources:
             requests:
               cpu: "50m"
