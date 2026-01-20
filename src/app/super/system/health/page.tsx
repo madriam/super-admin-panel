@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Loader2,
-  Clock,
+  HelpCircle,
   Cpu,
   HardDrive,
   Wifi,
@@ -19,70 +19,60 @@ import {
 
 interface ServiceStatus {
   name: string;
-  status: 'healthy' | 'degraded' | 'down';
+  status: 'healthy' | 'degraded' | 'down' | 'unknown';
   latency?: number;
   lastCheck: Date;
   details?: string;
 }
 
-const SERVICES: ServiceStatus[] = [
-  {
-    name: 'API Gateway',
-    status: 'healthy',
-    latency: 45,
-    lastCheck: new Date(),
-    details: 'All endpoints responding normally',
-  },
-  {
-    name: 'PostgreSQL',
-    status: 'healthy',
-    latency: 12,
-    lastCheck: new Date(),
-    details: 'Primary and replicas healthy',
-  },
-  {
-    name: 'Redis Cache',
-    status: 'healthy',
-    latency: 3,
-    lastCheck: new Date(),
-    details: 'Memory usage at 45%',
-  },
-  {
-    name: 'Redpanda (Kafka)',
-    status: 'healthy',
-    latency: 8,
-    lastCheck: new Date(),
-    details: 'All brokers in sync',
-  },
-  {
-    name: 'Vault',
-    status: 'healthy',
-    latency: 25,
-    lastCheck: new Date(),
-    details: 'Unsealed and operational',
-  },
-  {
-    name: 'WhatsApp Gateway',
-    status: 'healthy',
-    latency: 120,
-    lastCheck: new Date(),
-    details: 'Connected to Twilio',
-  },
-  {
-    name: 'Chat Agent',
-    status: 'healthy',
-    latency: 85,
-    lastCheck: new Date(),
-    details: '2 replicas running',
-  },
-  {
-    name: 'Chatwoot',
-    status: 'healthy',
-    latency: 150,
-    lastCheck: new Date(),
-    details: 'Sidekiq processing normally',
-  },
-];
+interface ApiServiceStatus {
+  name: string;
+  status: 'ok' | 'error' | 'unknown';
+  latency?: number;
+  lastChecked: string;
+}
+
+interface ApiResponse {
+  overall: 'healthy' | 'degraded' | 'critical';
+  services: ApiServiceStatus[];
+  summary: {
+    ok: number;
+    error: number;
+    unknown: number;
+    total: number;
+  };
+  checkedAt: string;
+}
+
+// Map API status to display status
+const mapApiStatus = (status: ApiServiceStatus['status']): ServiceStatus['status'] => {
+  switch (status) {
+    case 'ok':
+      return 'healthy';
+    case 'error':
+      return 'down';
+    case 'unknown':
+      return 'unknown';
+    default:
+      return 'unknown';
+  }
+};
+
+// Generate details based on status and latency
+const generateDetails = (service: ApiServiceStatus): string => {
+  if (service.status === 'ok') {
+    if (service.latency !== undefined) {
+      if (service.latency < 100) return 'Respondendo normalmente';
+      if (service.latency < 500) return 'Latencia moderada';
+      return 'Latencia alta';
+    }
+    return 'Operacional';
+  }
+  if (service.status === 'error') {
+    return 'Servico indisponivel';
+  }
+  return 'Status nao verificavel (interno)';
+};
 
 const getStatusIcon = (status: ServiceStatus['status']) => {
   switch (status) {
@@ -92,6 +82,8 @@ const getStatusIcon = (status: ServiceStatus['status']) => {
       return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
     case 'down':
       return <XCircle className="h-5 w-5 text-red-500" />;
+    case 'unknown':
+      return <HelpCircle className="h-5 w-5 text-gray-400" />;
   }
 };
 
@@ -103,29 +95,120 @@ const getStatusColor = (status: ServiceStatus['status']) => {
       return 'bg-yellow-50 border-yellow-200 text-yellow-700';
     case 'down':
       return 'bg-red-50 border-red-200 text-red-700';
+    case 'unknown':
+      return 'bg-gray-50 border-gray-200 text-gray-600';
+  }
+};
+
+const getStatusLabel = (status: ServiceStatus['status']) => {
+  switch (status) {
+    case 'healthy':
+      return 'Saudavel';
+    case 'degraded':
+      return 'Degradado';
+    case 'down':
+      return 'Fora do ar';
+    case 'unknown':
+      return 'Desconhecido';
   }
 };
 
 export default function SystemHealthPage() {
-  const [services, setServices] = useState<ServiceStatus[]>(SERVICES);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [services, setServices] = useState<ServiceStatus[]>([]);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setServices(SERVICES.map((s) => ({ ...s, lastCheck: new Date() })));
-    setLastRefresh(new Date());
-    setRefreshing(false);
+  const fetchServiceStatus = async (showRefreshing = false) => {
+    if (showRefreshing) setRefreshing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/services/status');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar status dos servicos');
+      }
+
+      const data: ApiResponse = await response.json();
+
+      // Transform API response to component format
+      const transformedServices: ServiceStatus[] = data.services.map((service) => ({
+        name: service.name,
+        status: mapApiStatus(service.status),
+        latency: service.latency,
+        lastCheck: new Date(service.lastChecked),
+        details: generateDetails(service),
+      }));
+
+      setServices(transformedServices);
+      setLastRefresh(new Date(data.checkedAt));
+    } catch (err) {
+      console.error('Error fetching service status:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
+
+  useEffect(() => {
+    fetchServiceStatus();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchServiceStatus(), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRefresh = () => fetchServiceStatus(true);
 
   const healthyCount = services.filter((s) => s.status === 'healthy').length;
   const degradedCount = services.filter((s) => s.status === 'degraded').length;
   const downCount = services.filter((s) => s.status === 'down').length;
+  const unknownCount = services.filter((s) => s.status === 'unknown').length;
 
   const overallStatus =
     downCount > 0 ? 'critical' : degradedCount > 0 ? 'warning' : 'operational';
+
+  // Calculate average latency from services that have latency data
+  const servicesWithLatency = services.filter((s) => s.latency !== undefined);
+  const avgLatency =
+    servicesWithLatency.length > 0
+      ? Math.round(
+          servicesWithLatency.reduce((sum, s) => sum + (s.latency || 0), 0) /
+            servicesWithLatency.length
+        )
+      : null;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
+          <p className="mt-2 text-gray-500">Verificando status dos servicos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <p className="mt-2 text-gray-900 font-medium">Erro ao carregar status</p>
+          <p className="text-gray-500">{error}</p>
+          <button
+            onClick={() => fetchServiceStatus(true)}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -199,7 +282,7 @@ export default function SystemHealthPage() {
                   : 'Servicos criticos fora do ar'}
               </h2>
               <p className="text-sm mt-1 opacity-75">
-                Ultima verificacao: {lastRefresh.toLocaleTimeString('pt-BR')}
+                Ultima verificacao: {lastRefresh ? lastRefresh.toLocaleTimeString('pt-BR') : '—'}
               </p>
             </div>
           </div>
@@ -209,8 +292,8 @@ export default function SystemHealthPage() {
               <p className="text-sm text-gray-600">Saudaveis</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-yellow-600">{degradedCount}</p>
-              <p className="text-sm text-gray-600">Degradados</p>
+              <p className="text-2xl font-bold text-gray-400">{unknownCount}</p>
+              <p className="text-sm text-gray-600">Internos</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-red-600">{downCount}</p>
@@ -228,8 +311,10 @@ export default function SystemHealthPage() {
               <Server className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Nodes</p>
-              <p className="text-xl font-semibold text-gray-900">2 / 2</p>
+              <p className="text-sm text-gray-500">Servicos</p>
+              <p className="text-xl font-semibold text-gray-900">
+                {healthyCount} / {services.length}
+              </p>
             </div>
           </div>
         </div>
@@ -239,8 +324,10 @@ export default function SystemHealthPage() {
               <Cpu className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">CPU</p>
-              <p className="text-xl font-semibold text-gray-900">42%</p>
+              <p className="text-sm text-gray-500">Verificaveis</p>
+              <p className="text-xl font-semibold text-gray-900">
+                {services.length - unknownCount}
+              </p>
             </div>
           </div>
         </div>
@@ -250,8 +337,8 @@ export default function SystemHealthPage() {
               <HardDrive className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Memoria</p>
-              <p className="text-xl font-semibold text-gray-900">68%</p>
+              <p className="text-sm text-gray-500">Com Problemas</p>
+              <p className="text-xl font-semibold text-gray-900">{downCount + degradedCount}</p>
             </div>
           </div>
         </div>
@@ -262,7 +349,9 @@ export default function SystemHealthPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Latencia Media</p>
-              <p className="text-xl font-semibold text-gray-900">56ms</p>
+              <p className="text-xl font-semibold text-gray-900">
+                {avgLatency !== null ? `${avgLatency}ms` : '—'}
+              </p>
             </div>
           </div>
         </div>
@@ -298,11 +387,7 @@ export default function SystemHealthPage() {
                     service.status
                   )}`}
                 >
-                  {service.status === 'healthy'
-                    ? 'Saudavel'
-                    : service.status === 'degraded'
-                    ? 'Degradado'
-                    : 'Fora do ar'}
+                  {getStatusLabel(service.status)}
                 </span>
               </div>
             </div>
