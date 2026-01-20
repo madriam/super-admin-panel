@@ -27,18 +27,6 @@ const SERVICES = [
     url: process.env.ARGOCD_URL || 'https://argocd.ilhaperdida.com.br/',
   },
   {
-    name: 'PostgreSQL',
-    // PostgreSQL health is checked via internal service, mark as unknown if not internal
-    url: null,
-    internal: true,
-  },
-  {
-    name: 'Redpanda',
-    // Redpanda health is checked via internal service
-    url: null,
-    internal: true,
-  },
-  {
     name: 'Zitadel',
     url: process.env.ZITADEL_ISSUER ? `${process.env.ZITADEL_ISSUER}/.well-known/openid-configuration` : 'https://auth.ilhaperdida.com.br/.well-known/openid-configuration',
   },
