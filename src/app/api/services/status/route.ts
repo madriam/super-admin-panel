@@ -34,19 +34,9 @@ const SERVICES = [
 
 async function checkServiceHealth(
   name: string,
-  url: string | null,
-  internal?: boolean
+  url: string
 ): Promise<ServiceStatus> {
   const now = new Date().toISOString();
-
-  // Internal services that can't be checked from external
-  if (internal || !url) {
-    return {
-      name,
-      status: 'unknown',
-      lastChecked: now,
-    };
-  }
 
   try {
     const startTime = Date.now();
@@ -87,7 +77,7 @@ export async function GET() {
   try {
     // Check all services in parallel
     const statusPromises = SERVICES.map((service) =>
-      checkServiceHealth(service.name, service.url, service.internal)
+      checkServiceHealth(service.name, service.url)
     );
 
     const statuses = await Promise.all(statusPromises);
