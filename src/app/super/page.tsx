@@ -206,28 +206,28 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Orgs Ativas"
-          value={stats?.activeOrgs}
-          subtitle={stats?.totalOrgs !== null ? `${stats?.totalOrgs} total` : undefined}
+          value={stats?.activeOrgs ?? null}
+          subtitle={stats?.totalOrgs != null ? `${stats.totalOrgs} total` : undefined}
           icon={Building2}
           color="indigo"
         />
         <StatCard
           title="Conversas (hoje)"
-          value={stats?.totalConversationsToday}
+          value={stats?.totalConversationsToday ?? null}
           subtitle="Estimativa diaria"
           icon={MessageSquare}
           color="purple"
         />
         <StatCard
           title="MRR"
-          value={stats?.totalMRR !== null ? `R$ ${stats?.totalMRR?.toLocaleString('pt-BR')}` : null}
+          value={stats?.totalMRR != null ? `R$ ${stats.totalMRR.toLocaleString('pt-BR')}` : null}
           subtitle="Receita mensal"
           icon={DollarSign}
           color="green"
         />
         <StatCard
           title="Uptime"
-          value={stats?.uptime || 'X'}
+          value={stats?.uptime ?? 'X'}
           subtitle="Ultimo mes"
           icon={Clock}
           color="blue"
