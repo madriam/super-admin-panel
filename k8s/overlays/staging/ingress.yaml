@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: admin-panel
+  name: super-admin-panel
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
@@ -10,22 +10,10 @@ spec:
   tls:
     - hosts:
         - super-admin.ilhaperdida.com.br
-        - panel.ilhaperdida.com.br
-      secretName: admin-panel-tls
+      secretName: super-admin-panel-tls
   rules:
-    # Super Admin Panel - Platform owner access (new domain)
+    # Super Admin Panel - Platform owner access
     - host: super-admin.ilhaperdida.com.br
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: admin-panel
-                port:
-                  number: 80
-    # Org Admin Panel - Customer organization access
-    - host: panel.ilhaperdida.com.br
       http:
         paths:
           - path: /
