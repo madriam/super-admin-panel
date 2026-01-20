@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: admin-panel
-          image: ghcr.io/madriam/admin-panel:latest
+          image: ghcr.io/madriam/super-admin-panel:latest
           imagePullPolicy: Always
           ports:
             - name: http

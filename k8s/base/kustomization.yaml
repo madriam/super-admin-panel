@@ -9,5 +9,5 @@ commonLabels:
   app.kubernetes.io/component: web
   app.kubernetes.io/part-of: madriam-platform
 images:
-  - name: ghcr.io/madriam/admin-panel
+  - name: ghcr.io/madriam/super-admin-panel
     newTag: latest
