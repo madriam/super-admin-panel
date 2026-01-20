@@ -23,7 +23,8 @@ const SERVICES = [
   },
   {
     name: 'ArgoCD',
-    url: process.env.ARGOCD_URL || 'https://argocd.ilhaperdida.com.br/api/version',
+    // ArgoCD redirects /api/version, so just check base URL returns something
+    url: process.env.ARGOCD_URL || 'https://argocd.ilhaperdida.com.br/',
   },
   {
     name: 'PostgreSQL',
@@ -67,6 +68,7 @@ async function checkServiceHealth(
     const response = await fetch(url, {
       method: 'GET',
       signal: controller.signal,
+      redirect: 'manual', // Don't follow redirects - just check if service responds
       headers: {
         'Accept': 'application/json',
       },
@@ -75,7 +77,7 @@ async function checkServiceHealth(
     clearTimeout(timeoutId);
     const latency = Date.now() - startTime;
 
-    // Consider 2xx and some 4xx as "ok" (service is responding)
+    // Consider 2xx, 3xx (redirects), and some 4xx as "ok" (service is responding)
     const isOk = response.status >= 200 && response.status < 500;
 
     return {
