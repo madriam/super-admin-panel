@@ -14,16 +14,8 @@ const SERVICES = [
     url: process.env.WHATSAPP_GATEWAY_URL || 'https://whatsapp.ilhaperdida.com.br/health',
   },
   {
-    name: 'Chat Agent',
-    url: process.env.CHAT_AGENT_URL || 'https://api.ilhaperdida.com.br/health',
-  },
-  {
     name: 'Ontology Service',
     url: process.env.ONTOLOGY_API_URL || process.env.NEXT_PUBLIC_ONTOLOGY_API_URL || 'https://ontology.ilhaperdida.com.br/health',
-  },
-  {
-    name: 'Chatwoot',
-    url: process.env.CHATWOOT_URL || 'https://chat.ilhaperdida.com.br/api/v1/accounts',
   },
   {
     name: 'Vault',
