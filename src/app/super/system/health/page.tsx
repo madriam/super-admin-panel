@@ -359,14 +359,33 @@ export default function SystemHealthPage() {
 
       {/* Services Grid */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Status dos Servicos</h2>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {refreshing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Medindo latencias...
+              </>
+            ) : (
+              <>
+                <Activity className="h-4 w-4" />
+                Recalcular Latencias
+              </>
+            )}
+          </button>
         </div>
         <div className="divide-y divide-gray-100">
           {services.map((service) => (
             <div
               key={service.name}
-              className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                refreshing ? 'opacity-50' : ''
+              }`}
             >
               <div className="flex items-center gap-4">
                 {getStatusIcon(service.status)}
@@ -378,7 +397,9 @@ export default function SystemHealthPage() {
               <div className="flex items-center gap-6">
                 {service.latency !== undefined && (
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{service.latency}ms</p>
+                    <p className={`text-sm font-medium text-gray-900 ${refreshing ? 'animate-pulse' : ''}`}>
+                      {refreshing ? '...' : `${service.latency}ms`}
+                    </p>
                     <p className="text-xs text-gray-500">latencia</p>
                   </div>
                 )}
